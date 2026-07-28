@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="core_login">Войти</string>
+    <string name="core_register">Регистрация</string>
+    <string name="core_recovery">Восстановить пароль</string>
+    <string name="core_logout">Выйти</string>
+    <string name="core_refresh">Обновить профиль</string>
+    <string name="core_email">Email</string>
+    <string name="core_password">Пароль</string>
+    <string name="core_name">Имя</string>
+    <string name="core_code">Код восстановления</string>
+    <string name="core_new_password">Новый пароль</string>
+    <string name="core_submit">Продолжить</string>
+    <string name="core_loading">Выполняется запрос…</string>
+</resources>

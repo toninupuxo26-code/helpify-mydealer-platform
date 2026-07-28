@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+PATCH_ID="5000"
+PATCH_DESCRIPTION="Describe the release change"
+
+check(){ :; }
+apply(){ :; }
+verify(){ :; }
+rollback(){ :; }
+
+case "${1:-}" in
+  check) check ;;
+  apply) apply ;;
+  verify) verify ;;
+  rollback) rollback ;;
+  *) printf 'Usage: %s {check|apply|verify|rollback}\n' "$0" >&2; exit 64 ;;
+esac

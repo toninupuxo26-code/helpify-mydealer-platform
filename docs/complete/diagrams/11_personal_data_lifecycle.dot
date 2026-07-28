@@ -1,0 +1,15 @@
+
+    digraph G {
+      graph [rankdir=LR, bgcolor="white", pad=0.2];
+      node [shape=box, style="rounded,filled", fontname="Liberation Sans", fontsize=9, color="#1F7A5A", fillcolor="#F2FBF7"];
+      edge [color="#1F7A5A"];
+      a [label="Уведомление и основание"];
+      b [label="Минимальный сбор"];
+      c [label="Использование по цели"];
+      d [label="Ограниченный доступ"];
+      e [label="Хранение по сроку"];
+      f [label="Запрос субъекта"];
+      g [label="Удаление / анонимизация"];
+      h [label="Аудит выполнения"];
+      a->b->c->d->e->f->g->h;
+    }

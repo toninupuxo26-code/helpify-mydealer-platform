@@ -1,0 +1,17 @@
+
+    digraph G {
+      graph [rankdir=TB, bgcolor="white", pad=0.2];
+      node [shape=box, style="rounded,filled", fontname="Liberation Sans", fontsize=9, color="#2F5597", fillcolor="#F4F8FB"];
+      edge [color="#6B7280"];
+      ui [label="UI\nAndroid XML / iOS UIKit", fillcolor="#D9EAF7"];
+      vm [label="ViewModel / Presentation"];
+      repo [label="Repository"];
+      api [label="API client\nJSON + HTTPS"];
+      storage [label="Secure session storage\nKeystore / Keychain"];
+      cache [label="Ограниченный локальный кэш"];
+      server [label="REST API"];
+      ui -> vm -> repo;
+      repo -> api -> server;
+      repo -> storage;
+      repo -> cache;
+    }

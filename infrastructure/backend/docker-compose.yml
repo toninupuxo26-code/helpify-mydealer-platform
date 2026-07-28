@@ -1,0 +1,133 @@
+services:
+  mysql:
+    image: mysql:8.0.28
+    restart: unless-stopped
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      HELPIFY_DB_DATABASE: ${HELPIFY_DB_DATABASE}
+      HELPIFY_DB_USERNAME: ${HELPIFY_DB_USERNAME}
+      HELPIFY_DB_PASSWORD: ${HELPIFY_DB_PASSWORD}
+      MYDEALER_DB_DATABASE: ${MYDEALER_DB_DATABASE}
+      MYDEALER_DB_USERNAME: ${MYDEALER_DB_USERNAME}
+      MYDEALER_DB_PASSWORD: ${MYDEALER_DB_PASSWORD}
+    volumes:
+      - /var/lib/helpify-mydealer/backend/mysql:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks: [backend]
+    logging: &default-logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:6.2.6-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - /var/lib/helpify-mydealer/backend/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+    logging: *default-logging
+
+  helpify-api:
+    image: helpify-mydealer/php74-laravel8-helpify:0.8.0
+    build:
+      context: ../../implementation/helpify/backend
+      dockerfile: ../../../infrastructure/backend/php74-apache/Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_NAME: Helpify
+      APP_PRODUCT: helpify
+      APP_ENV: demo
+      APP_DEBUG: "false"
+      APP_KEY: ${HELPIFY_APP_KEY}
+      APP_URL: https://helpsiffyy.app
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: ${HELPIFY_DB_DATABASE}
+      DB_USERNAME: ${HELPIFY_DB_USERNAME}
+      DB_PASSWORD: ${HELPIFY_DB_PASSWORD}
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:18081:80
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1/api/health\") === false ? 1 : 0);'"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks: [backend]
+    logging: *default-logging
+
+  mydealer-api:
+    image: helpify-mydealer/php74-laravel8-mydealer:0.8.0
+    build:
+      context: ../../implementation/mydealer/backend
+      dockerfile: ../../../infrastructure/backend/php74-apache/Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_NAME: MyDealer
+      APP_PRODUCT: mydealer
+      APP_ENV: demo
+      APP_DEBUG: "false"
+      APP_KEY: ${MYDEALER_APP_KEY}
+      APP_URL: https://mydealers.app
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: ${MYDEALER_DB_DATABASE}
+      DB_USERNAME: ${MYDEALER_DB_USERNAME}
+      DB_PASSWORD: ${MYDEALER_DB_PASSWORD}
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:18082:80
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1/api/health\") === false ? 1 : 0);'"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks: [backend]
+    logging: *default-logging
+
+networks:
+  backend:
+    name: helpify-mydealer-backend

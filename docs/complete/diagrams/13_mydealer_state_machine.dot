@@ -1,0 +1,14 @@
+
+    digraph G {
+      graph [rankdir=LR, bgcolor="white", pad=0.2];
+      node [shape=circle, style="filled", fontname="Liberation Sans", fontsize=8, color="#1F7A5A", fillcolor="#F2FBF7"];
+      edge [color="#1F7A5A", fontname="Liberation Sans", fontsize=7];
+      new [label="new"];
+      confirmed [label="confirmed"];
+      completed [label="completed", fillcolor="#DDF3E8"];
+      cancelled [label="cancelled", fillcolor="#FDECEC"];
+      new -> confirmed [label="vendor confirms"];
+      confirmed -> completed [label="fulfilment"];
+      new -> cancelled [label="cancel"];
+      confirmed -> cancelled [label="exception"];
+    }

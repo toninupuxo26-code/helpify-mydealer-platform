@@ -1,0 +1,8 @@
+<type>(<scope>): <summary>
+
+Types: feat, fix, docs, test, refactor, perf, build, ci, chore
+
+Examples:
+feat(helpify): add contractor offer filters
+fix(mydealer): prevent duplicate cart rows
+docs(api): document order status transitions

@@ -1,0 +1,20 @@
+
+    digraph G {
+      graph [rankdir=TB, bgcolor="white", pad=0.2];
+      node [shape=box, style="rounded,filled", fontname="Liberation Sans", fontsize=9, color="#2F5597", fillcolor="#F4F8FB"];
+      edge [color="#6B7280"];
+      internet [label="Internet"];
+      nginx [label="Host Ubuntu 20.04 LTS\nNginx 1.18 + Certbot + firewall", fillcolor="#D9EAF7"];
+      hstatic [label="/var/www/helpsiffyy.app\nimmutable releases"];
+      mstatic [label="/var/www/mydealers.app\nimmutable releases"];
+      docker [label="Docker network\nloopback API ports"];
+      hapi [label="helpify-api : 127.0.0.1:18081"];
+      mapi [label="mydealer-api : 127.0.0.1:18082"];
+      mysql [label="mysql:8"];
+      redis [label="redis:6"];
+      backup [label="Backups + logs + manifests"];
+      internet -> nginx;
+      nginx -> hstatic; nginx -> mstatic; nginx -> hapi; nginx -> mapi;
+      hapi -> mysql; mapi -> mysql; hapi -> redis; mapi -> redis;
+      mysql -> backup; hstatic -> backup; mstatic -> backup;
+    }

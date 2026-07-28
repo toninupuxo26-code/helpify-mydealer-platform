@@ -1,0 +1,15 @@
+
+    digraph G {
+      graph [rankdir=LR, bgcolor="white", pad=0.2];
+      node [shape=box, style="rounded,filled", fontname="Liberation Sans", fontsize=9, color="#2F5597", fillcolor="#F4F8FB"];
+      edge [color="#2F5597", fontname="Liberation Sans", fontsize=8];
+      a [label="Заказчик\nсоздает задачу", fillcolor="#D9EAF7"];
+      b [label="Задача open"];
+      c [label="Исполнители\nвидят ленту"];
+      d [label="Предложения\npending"];
+      e [label="Заказчик\nвыбирает"];
+      f [label="Задача assigned"];
+      g [label="Чат и выполнение"];
+      h [label="Задача completed", fillcolor="#DDF3E8"];
+      a->b->c->d->e->f->g->h;
+    }

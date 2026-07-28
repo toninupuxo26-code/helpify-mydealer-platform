@@ -1,0 +1,20 @@
+
+    digraph G {
+      graph [rankdir=LR, bgcolor="white", pad=0.2, nodesep=0.45, ranksep=0.7];
+      node [shape=box, style="rounded,filled", fontname="Liberation Sans", fontsize=10, color="#2F5597", fillcolor="#F4F8FB"];
+      edge [color="#6B7280", fontname="Liberation Sans", fontsize=8];
+      users [label="Пользователи\nWeb / Android / iOS", fillcolor="#D9EAF7"];
+      cf [label="DNS / CDN / WAF\n(опционально)"];
+      nginx [label="Nginx 1.18\nTLS + маршрутизация", fillcolor="#D9EAF7"];
+      hlpweb [label="Helpify\nлендинг + web app"];
+      mydweb [label="MyDealer\nлендинг + web app"];
+      hlpapi [label="Helpify API\nPHP 7.4 / Laravel 8"];
+      mydapi [label="MyDealer API\nPHP 7.4 / Laravel 8"];
+      mysql [label="MySQL 8\nдве логические БД", fillcolor="#FFF3CD"];
+      redis [label="Redis 6\nкэш / очереди / health"];
+      logs [label="Логи / аудит / мониторинг"];
+      users -> cf -> nginx;
+      nginx -> hlpweb; nginx -> mydweb; nginx -> hlpapi; nginx -> mydapi;
+      hlpapi -> mysql; mydapi -> mysql; hlpapi -> redis; mydapi -> redis;
+      nginx -> logs; hlpapi -> logs; mydapi -> logs;
+    }

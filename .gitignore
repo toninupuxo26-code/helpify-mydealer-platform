@@ -1,0 +1,52 @@
+# Runtime configuration
+.env
+.env.*
+!.env.example
+
+# Credentials and keys
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+credentials.json
+service-account*.json
+
+# Database and backups
+*.sql
+*.dump
+*.backup
+backups/
+runtime/
+.runtime/
+
+# PHP
+vendor/
+storage/logs/*
+!storage/logs/.gitkeep
+bootstrap/cache/*.php
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Android
+.gradle/
+local.properties
+**/build/
+*.apk
+*.aab
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*.log

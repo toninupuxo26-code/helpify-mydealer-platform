@@ -1,0 +1,18 @@
+
+    digraph G {
+      graph [rankdir=TB, bgcolor="white", pad=0.2];
+      node [shape=box, style="rounded,filled", fontname="Liberation Sans", fontsize=9, color="#2F5597", fillcolor="#F4F8FB"];
+      edge [color="#6B7280", fontname="Liberation Sans", fontsize=8];
+      client [label="Web / Mobile клиент"];
+      api [label="Laravel API"];
+      db [label="MySQL"];
+      client -> api [label="POST /auth/login\nemail + password"];
+      api -> db [label="найти active user"];
+      db -> api [label="password hash"];
+      api -> api [label="Hash::check\n32 random bytes"];
+      api -> db [label="SHA-256 token + expires_at"];
+      api -> client [label="Bearer token (однократно)"];
+      client -> api [label="Authorization: Bearer"];
+      api -> db [label="hash token + validate expiry"];
+      api -> client [label="защищенный ресурс"];
+    }

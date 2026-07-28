@@ -1,0 +1,18 @@
+
+    digraph G {
+      graph [rankdir=LR, bgcolor="white", pad=0.2];
+      node [shape=record, style="filled", fontname="Liberation Sans", fontsize=8, color="#1F7A5A", fillcolor="#F2FBF7"];
+      users [label="{users|id PK\lemail UQ\lrole\lstatus\lpassword\l}"];
+      products [label="{products|id PK\lvendor_id FK\lname\lprice\lunit\lstatus\l}"];
+      cart [label="{cart_items|id PK\lbuyer_id FK\lproduct_id FK\lquantity\l}"];
+      orders [label="{orders|id PK\lbuyer_id FK\lvendor_id FK\ltotal\lstatus\l}"];
+      items [label="{order_items|id PK\lorder_id FK\lproduct_id\lproduct_name\lunit_price\lquantity\l}"];
+      msgs [label="{order_messages|id PK\lorder_id FK\lauthor_id FK\ltext\l}"];
+      users -> products [label="vendor 1:N"];
+      users -> cart [label="buyer 1:N"];
+      products -> cart [label="1:N"];
+      users -> orders [label="buyer/vendor 1:N"];
+      orders -> items [label="1:N"];
+      orders -> msgs [label="1:N"];
+      users -> msgs [label="author 1:N"];
+    }

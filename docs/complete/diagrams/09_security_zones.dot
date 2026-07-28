@@ -1,0 +1,17 @@
+
+    digraph G {
+      graph [rankdir=LR, bgcolor="white", pad=0.2];
+      node [shape=box, style="rounded,filled", fontname="Liberation Sans", fontsize=9];
+      edge [color="#A61B1B", fontname="Liberation Sans", fontsize=8];
+      public [label="Недоверенная зона\nInternet / client", color="#A61B1B", fillcolor="#FDECEC", style="rounded,filled"];
+      edgezone [label="Пограничная зона\nDNS/CDN/WAF/Nginx", color="#C65911", fillcolor="#FFF3E0", style="rounded,filled"];
+      app [label="Прикладная зона\nLaravel containers", color="#2F5597", fillcolor="#EAF2F8", style="rounded,filled"];
+      data [label="Зона данных\nMySQL / Redis / backups", color="#1F7A5A", fillcolor="#EAF7F1", style="rounded,filled"];
+      admin [label="Административная зона\nSSH/VPN/MFA", color="#6B7280", fillcolor="#F3F4F6", style="rounded,filled"];
+      public -> edgezone [label="TLS, rate limits"];
+      edgezone -> app [label="loopback/proxy"];
+      app -> data [label="private network, least privilege"];
+      admin -> edgezone [label="controlled"];
+      admin -> app [label="deploy"];
+      admin -> data [label="backup/restore"];
+    }

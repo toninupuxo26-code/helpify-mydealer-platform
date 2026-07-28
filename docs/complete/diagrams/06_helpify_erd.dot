@@ -1,0 +1,17 @@
+
+    digraph G {
+      graph [rankdir=LR, bgcolor="white", pad=0.2];
+      node [shape=record, style="filled", fontname="Liberation Sans", fontsize=8, color="#2F5597", fillcolor="#F4F8FB"];
+      users [label="{users|id PK\lemail UQ\lrole\lstatus\lpassword\l}"];
+      tokens [label="{api_tokens|id PK\luser_id FK\ltoken_hash UQ\lexpires_at\l}"];
+      reset [label="{password_reset_codes|id PK\lemail\lcode_hash\lexpires_at\lused_at\l}"];
+      tasks [label="{tasks|id PK\lcustomer_id FK\ltitle\lcategory\lbudget\lstatus\lselected_offer_id\l}"];
+      offers [label="{task_offers|id PK\ltask_id FK\lcontractor_id FK\lprice\lstatus\l}"];
+      messages [label="{task_messages|id PK\ltask_id FK\lauthor_id FK\ltext\l}"];
+      users -> tokens [label="1:N"];
+      users -> tasks [label="customer 1:N"];
+      users -> offers [label="contractor 1:N"];
+      tasks -> offers [label="1:N"];
+      tasks -> messages [label="1:N"];
+      users -> messages [label="author 1:N"];
+    }

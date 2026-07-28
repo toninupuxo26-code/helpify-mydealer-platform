@@ -1,0 +1,16 @@
+
+    digraph G {
+      graph [rankdir=LR, bgcolor="white", pad=0.2];
+      node [shape=box, style="rounded,filled", fontname="Liberation Sans", fontsize=9, color="#1F7A5A", fillcolor="#F2FBF7"];
+      edge [color="#1F7A5A", fontname="Liberation Sans", fontsize=8];
+      a [label="Вендор\nсоздает товар", fillcolor="#DDF3E8"];
+      b [label="moderation"];
+      c [label="published"];
+      d [label="Покупатель\nдобавляет в корзину"];
+      e [label="Checkout\nгруппировка по вендору"];
+      f [label="Заказ new"];
+      g [label="Вендор confirmed"];
+      h [label="Чат / исполнение"];
+      i [label="completed", fillcolor="#DDF3E8"];
+      a->b->c->d->e->f->g->h->i;
+    }

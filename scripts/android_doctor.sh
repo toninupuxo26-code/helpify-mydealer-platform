@@ -29,8 +29,8 @@ source_checks(){
     contains "$ANDROID/$app/src/main/AndroidManifest.xml" "android.permission.INTERNET" "$app Internet permission"
     contains "$ANDROID/$app/src/main/AndroidManifest.xml" 'android:exported="true"' "$app exported launcher"
   done
-  contains "$ANDROID/helpify/src/main/java/app/helpsiffyy/development/MainActivity.kt" "https://helpsiffyy.app/api" "Helpify API URL"
-  contains "$ANDROID/mydealer/src/main/java/app/mydealers/development/MainActivity.kt" "https://mydealers.app/api" "MyDealer API URL"
+  contains "$ANDROID/helpify/src/main/java/app/helpsiffyy/mobile/MainActivity.kt" "https://helpsiffyy.app/api" "Helpify API URL"
+  contains "$ANDROID/mydealer/src/main/java/app/mydealers/mobile/MainActivity.kt" "https://mydealers.app/api" "MyDealer API URL"
   file "$ANDROID/core/src/main/java/app/shared/core/AuthRepository.kt" "shared auth repository"
   file "$ANDROID/core/src/main/java/app/shared/core/BaseAuthActivity.kt" "shared authentication UI"
   file "$ANDROID/core/src/main/java/app/shared/core/BaseDashboardActivity.kt" "shared dashboard UI"

@@ -1,0 +1,23 @@
+name: android-source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'implementation/android-native/**'
+      - 'infrastructure/android/**'
+      - 'scripts/android_build_doctor.sh'
+      - '.github/workflows/android-source.yml'
+  pull_request:
+    paths:
+      - 'implementation/android-native/**'
+      - 'infrastructure/android/**'
+      - 'scripts/android_build_doctor.sh'
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Android build sources
+        run: ./scripts/android_build_doctor.sh source

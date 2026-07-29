@@ -43,22 +43,22 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
 
     private fun render(current: ApiUser) {
         user = current
-        profileText.text = "${current.name}
-${current.email}
-Роль: ${current.role}"
+        profileText.text = "${current.name}\n${current.email}\nРоль: ${current.role}"
         cards.removeAllViews()
         dashboardCards(current).forEach { card ->
             val button = Button(this).apply {
-                text = "${card.title}
-${card.description}"
+                text = "${card.title}\n${card.description}"
                 isAllCaps = false
                 setTextColor(Color.DKGRAY)
                 setPadding(16, 18, 16, 18)
-                setOnClickListener { Toast.makeText(this@BaseDashboardActivity, card.actionMessage, Toast.LENGTH_LONG).show() }
+                setOnClickListener {
+                    Toast.makeText(this@BaseDashboardActivity, card.actionMessage, Toast.LENGTH_LONG).show()
+                }
             }
-            cards.addView(button, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = 10
-            })
+            cards.addView(button, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = 10 })
         }
     }
 

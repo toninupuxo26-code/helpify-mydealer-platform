@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 MODE="${1:-all}"
-OUTPUT_DIR="${ANDROID_OUTPUT_DIR:-/var/lib/helpify-mydealer/android-builds/v0.8.2}"
+OUTPUT_DIR="${ANDROID_OUTPUT_DIR:-/var/lib/helpify-mydealer/android-builds/v0.8.3}"
 PASS=0
 WARN=0
 FAIL=0
@@ -32,10 +32,10 @@ source_checks(){
     && pass "Gradle 7.0.2 pinned" || fail "Gradle 7.0.2 pinned"
 
   for module in helpify mydealer; do
-    grep -Fq "versionCode 802" "$ROOT/implementation/android-native/$module/build.gradle" \
-      && pass "$module versionCode 802" || fail "$module versionCode 802"
-    grep -Fq "versionName '0.8.2'" "$ROOT/implementation/android-native/$module/build.gradle" \
-      && pass "$module versionName 0.8.2" || fail "$module versionName 0.8.2"
+    grep -Fq "versionCode 803" "$ROOT/implementation/android-native/$module/build.gradle" \
+      && pass "$module versionCode 803" || fail "$module versionCode 803"
+    grep -Fq "versionName '0.8.3'" "$ROOT/implementation/android-native/$module/build.gradle" \
+      && pass "$module versionName 0.8.3" || fail "$module versionName 0.8.3"
   done
 
   bash -n "$ROOT/scripts/android_build.sh" \
@@ -45,14 +45,14 @@ source_checks(){
 }
 
 artifact_checks(){
-  local helpify="$OUTPUT_DIR/Helpify-v0.8.2-debug.apk"
-  local mydealer="$OUTPUT_DIR/MyDealer-v0.8.2-debug.apk"
+  local helpify="$OUTPUT_DIR/Helpify-v0.8.3-debug.apk"
+  local mydealer="$OUTPUT_DIR/MyDealer-v0.8.3-debug.apk"
 
   check_file "$helpify" "Helpify debug APK"
   check_file "$mydealer" "MyDealer debug APK"
   check_file "$OUTPUT_DIR/SHA256SUMS.txt" "APK SHA-256 manifest"
-  check_file "$OUTPUT_DIR/Helpify-v0.8.2-badging.txt" "Helpify APK metadata"
-  check_file "$OUTPUT_DIR/MyDealer-v0.8.2-badging.txt" "MyDealer APK metadata"
+  check_file "$OUTPUT_DIR/Helpify-v0.8.3-badging.txt" "Helpify APK metadata"
+  check_file "$OUTPUT_DIR/MyDealer-v0.8.3-badging.txt" "MyDealer APK metadata"
   check_file "$OUTPUT_DIR/build.env" "Android build metadata"
 
   if [[ -f "$OUTPUT_DIR/SHA256SUMS.txt" ]] \
@@ -63,11 +63,11 @@ artifact_checks(){
   fi
 
   grep -Fq "package: name='app.helpsiffyy.mobile'" \
-    "$OUTPUT_DIR/Helpify-v0.8.2-badging.txt" 2>/dev/null \
+    "$OUTPUT_DIR/Helpify-v0.8.3-badging.txt" 2>/dev/null \
     && pass "Helpify package identifier" || fail "Helpify package identifier"
 
   grep -Fq "package: name='app.mydealers.mobile'" \
-    "$OUTPUT_DIR/MyDealer-v0.8.2-badging.txt" 2>/dev/null \
+    "$OUTPUT_DIR/MyDealer-v0.8.3-badging.txt" 2>/dev/null \
     && pass "MyDealer package identifier" || fail "MyDealer package identifier"
 }
 

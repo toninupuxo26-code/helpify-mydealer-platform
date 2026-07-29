@@ -1,3 +1,9 @@
+## 0.8.3 — Android Kotlin build fix
+
+- Corrected invalid newline literals in the shared Android authentication and dashboard screens.
+- Added a Kotlin source Doctor.
+- Updated Android application and artifact version to 0.8.3.
+
 ## 0.8.2 — Android build pipeline
 
 - Added a pinned Docker build environment for the native Android applications.

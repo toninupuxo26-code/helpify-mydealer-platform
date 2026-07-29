@@ -4,7 +4,7 @@ set -Eeuo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 ANDROID_DIR="$ROOT/implementation/android-native"
 IMAGE_NAME="${ANDROID_BUILD_IMAGE:-helpify-mydealer-android:0.8.2}"
-OUTPUT_DIR="${ANDROID_OUTPUT_DIR:-/var/lib/helpify-mydealer/android-builds/v0.8.2}"
+OUTPUT_DIR="${ANDROID_OUTPUT_DIR:-/var/lib/helpify-mydealer/android-builds/v0.8.3}"
 CACHE_DIR="${ANDROID_CACHE_DIR:-/var/cache/helpify-mydealer/android}"
 BUILD_IMAGE="${ANDROID_REBUILD_IMAGE:-0}"
 
@@ -53,31 +53,31 @@ docker run --rm \
 
     install -m 0644 \
       helpify/build/outputs/apk/debug/helpify-debug.apk \
-      /out/Helpify-v0.8.2-debug.apk
+      /out/Helpify-v0.8.3-debug.apk
 
     install -m 0644 \
       mydealer/build/outputs/apk/debug/mydealer-debug.apk \
-      /out/MyDealer-v0.8.2-debug.apk
+      /out/MyDealer-v0.8.3-debug.apk
 
-    aapt dump badging /out/Helpify-v0.8.2-debug.apk \
-      > /out/Helpify-v0.8.2-badging.txt
+    aapt dump badging /out/Helpify-v0.8.3-debug.apk \
+      > /out/Helpify-v0.8.3-badging.txt
 
-    aapt dump badging /out/MyDealer-v0.8.2-debug.apk \
-      > /out/MyDealer-v0.8.2-badging.txt
+    aapt dump badging /out/MyDealer-v0.8.3-debug.apk \
+      > /out/MyDealer-v0.8.3-badging.txt
 
     cd /out
     sha256sum \
-      Helpify-v0.8.2-debug.apk \
-      MyDealer-v0.8.2-debug.apk \
+      Helpify-v0.8.3-debug.apk \
+      MyDealer-v0.8.3-debug.apk \
       > SHA256SUMS.txt
   '
 
 cat > "$OUTPUT_DIR/build.env" <<EOF
-release=0.8.2
+release=0.8.3
 image=$IMAGE_NAME
 built_at_utc=$(date -u +%FT%TZ)
-helpify_apk=Helpify-v0.8.2-debug.apk
-mydealer_apk=MyDealer-v0.8.2-debug.apk
+helpify_apk=Helpify-v0.8.3-debug.apk
+mydealer_apk=MyDealer-v0.8.3-debug.apk
 EOF
 
 log "verifying artifacts"

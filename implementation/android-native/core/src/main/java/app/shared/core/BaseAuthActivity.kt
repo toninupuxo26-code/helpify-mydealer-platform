@@ -61,10 +61,8 @@ abstract class BaseAuthActivity : AppCompatActivity() {
         submitButton = findViewById(R.id.submitButton)
         title.text = productConfig.productName
         findViewById<TextView>(R.id.demoHint).text = productConfig.demoAccounts.joinToString(
-            prefix = "Демонстрационные аккаунты:
-",
-            separator = "
-"
+            prefix = "Демонстрационные аккаунты:\n",
+            separator = "\n"
         ) { "${it.title}: ${it.email} / ${it.password}" }
     }
 

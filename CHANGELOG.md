@@ -1,3 +1,10 @@
+## 0.8.3 — Android build memory profile
+
+- Limited Gradle heap and worker count for VPS builds.
+- Disabled parallel and incremental Kotlin compilation.
+- Changed Helpify and MyDealer builds to sequential execution.
+- Added memory diagnostics and optional build swap.
+
 ## 0.8.3 — Android Kotlin build fix
 
 - Corrected invalid newline literals in the shared Android authentication and dashboard screens.

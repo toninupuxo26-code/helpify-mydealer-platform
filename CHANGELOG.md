@@ -1,3 +1,10 @@
+## 0.9.0 — Interactive Android scenarios
+
+- Added role-specific Helpify and MyDealer datasets.
+- Added interactive multi-step scenarios with persistent progress.
+- Added metrics, grouped sections and scenario reset controls.
+- Updated the Android applications and APK artifacts to version 0.9.0.
+
 ## 0.8.3 — Android build memory profile
 
 - Limited Gradle heap and worker count for VPS builds.

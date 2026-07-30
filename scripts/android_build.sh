@@ -4,7 +4,7 @@ set -Eeuo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 ANDROID_DIR="$ROOT/implementation/android-native"
 IMAGE_NAME="${ANDROID_BUILD_IMAGE:-helpify-mydealer-android:0.8.2}"
-OUTPUT_DIR="${ANDROID_OUTPUT_DIR:-/var/lib/helpify-mydealer/android-builds/v0.8.3}"
+OUTPUT_DIR="${ANDROID_OUTPUT_DIR:-/var/lib/helpify-mydealer/android-builds/v0.9.0}"
 CACHE_DIR="${ANDROID_CACHE_DIR:-/var/cache/helpify-mydealer/android}"
 
 log(){ printf '[%(%H:%M:%S)T] %s\n' -1 "$*"; }
@@ -44,18 +44,18 @@ docker run --rm \
     gradle "${args[@]}" :helpify:assembleDebug
     gradle "${args[@]}" :mydealer:assembleDebug
 
-    install -m 0644 helpify/build/outputs/apk/debug/helpify-debug.apk /out/Helpify-v0.8.3-debug.apk
-    install -m 0644 mydealer/build/outputs/apk/debug/mydealer-debug.apk /out/MyDealer-v0.8.3-debug.apk
+    install -m 0644 helpify/build/outputs/apk/debug/helpify-debug.apk /out/Helpify-v0.9.0-debug.apk
+    install -m 0644 mydealer/build/outputs/apk/debug/mydealer-debug.apk /out/MyDealer-v0.9.0-debug.apk
 
-    aapt dump badging /out/Helpify-v0.8.3-debug.apk > /out/Helpify-v0.8.3-badging.txt
-    aapt dump badging /out/MyDealer-v0.8.3-debug.apk > /out/MyDealer-v0.8.3-badging.txt
+    aapt dump badging /out/Helpify-v0.9.0-debug.apk > /out/Helpify-v0.9.0-badging.txt
+    aapt dump badging /out/MyDealer-v0.9.0-debug.apk > /out/MyDealer-v0.9.0-badging.txt
 
     cd /out
-    sha256sum Helpify-v0.8.3-debug.apk MyDealer-v0.8.3-debug.apk > SHA256SUMS.txt
+    sha256sum Helpify-v0.9.0-debug.apk MyDealer-v0.9.0-debug.apk > SHA256SUMS.txt
   '
 
 cat > "$OUTPUT_DIR/build.env" <<META
-release=0.8.3
+release=0.9.0
 image=$IMAGE_NAME
 built_at_utc=$(date -u +%FT%TZ)
 gradle_heap_mb=1024

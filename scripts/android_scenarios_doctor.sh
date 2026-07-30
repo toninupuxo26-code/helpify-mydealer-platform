@@ -36,14 +36,14 @@ else
   fail "MyDealer scenarios below 24: $mydealer_count"
 fi
 
-grep -Fq 'versionCode 900' "$ROOT/implementation/android-native/helpify/build.gradle" \
-  && pass "Helpify versionCode 900" || fail "Helpify versionCode 900"
-grep -Fq "versionName '0.9.0'" "$ROOT/implementation/android-native/helpify/build.gradle" \
-  && pass "Helpify versionName 0.9.0" || fail "Helpify versionName 0.9.0"
-grep -Fq 'versionCode 900' "$ROOT/implementation/android-native/mydealer/build.gradle" \
-  && pass "MyDealer versionCode 900" || fail "MyDealer versionCode 900"
-grep -Fq "versionName '0.9.0'" "$ROOT/implementation/android-native/mydealer/build.gradle" \
-  && pass "MyDealer versionName 0.9.0" || fail "MyDealer versionName 0.9.0"
+grep -Fq 'versionCode 1000' "$ROOT/implementation/android-native/helpify/build.gradle" \
+  && pass "Helpify versionCode 1000" || fail "Helpify versionCode 1000"
+grep -Fq "versionName '0.10.0'" "$ROOT/implementation/android-native/helpify/build.gradle" \
+  && pass "Helpify versionName 0.10.0" || fail "Helpify versionName 0.10.0"
+grep -Fq 'versionCode 1000' "$ROOT/implementation/android-native/mydealer/build.gradle" \
+  && pass "MyDealer versionCode 1000" || fail "MyDealer versionCode 1000"
+grep -Fq "versionName '0.10.0'" "$ROOT/implementation/android-native/mydealer/build.gradle" \
+  && pass "MyDealer versionName 0.10.0" || fail "MyDealer versionName 0.10.0"
 
 if grep -RIniE 'reconstruction|retrospective|synthetic|реконструк|ретроспектив|синтет' \
   "$CORE" "$HELPIFY" "$MYDEALER" >/tmp/android-scenario-vocabulary.$$; then

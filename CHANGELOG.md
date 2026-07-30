@@ -1,3 +1,10 @@
+## 0.10.0 — Android live workflows
+
+- Connected both Android dashboards to the authenticated server APIs.
+- Added role-aware Helpify task and offer quick actions.
+- Added MyDealer catalogue, cart, checkout and order quick actions.
+- Preserved guided local scenarios as an offline demonstration layer.
+
 ## 0.9.0 — Interactive Android scenarios
 
 - Added role-specific Helpify and MyDealer datasets.

@@ -6,6 +6,7 @@ import app.shared.core.BaseDashboardActivity
 import app.shared.core.DashboardCard
 import app.shared.core.DashboardMetric
 import app.shared.core.DemoAccount
+import app.shared.core.LiveWorkflowRepository
 import app.shared.core.ProductConfig
 import app.shared.core.RoleOption
 
@@ -28,6 +29,9 @@ class DashboardActivity : BaseDashboardActivity() {
 
     override fun dashboardCards(user: ApiUser): List<DashboardCard> =
         MyDealerScenarioCatalog.cards(user.role)
+
+    override fun liveWorkflowRepository(): LiveWorkflowRepository =
+        MyDealerLiveWorkflowRepository(productConfig.apiBaseUrl)
 
     override fun returnToAuth() {
         startActivity(Intent(this, MainActivity::class.java))

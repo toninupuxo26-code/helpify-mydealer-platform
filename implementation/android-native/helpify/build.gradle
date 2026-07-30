@@ -10,8 +10,8 @@ android {
         applicationId 'app.helpsiffyy.mobile'
         minSdkVersion 23
         targetSdkVersion 31
-        versionCode 1200
-        versionName '0.12.0'
+        versionCode 1300
+        versionName '0.13.0'
     }
 
     buildTypes {

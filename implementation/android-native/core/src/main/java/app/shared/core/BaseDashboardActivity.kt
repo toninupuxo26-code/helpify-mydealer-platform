@@ -1,5 +1,6 @@
 package app.shared.core
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -34,6 +35,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private lateinit var scenarioStore: ScenarioStore
     private lateinit var liveCache: LiveDashboardCache
     private lateinit var actionHistory: ActionHistoryStore
+    private lateinit var libraryStore: DashboardLibraryStore
     private lateinit var profileText: TextView
     private lateinit var cardsContainer: LinearLayout
     private var workflowRepository: LiveWorkflowRepository? = null
@@ -45,6 +47,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private var searchQuery = ""
     private var activeSection = ALL_SECTIONS
     private var actionableOnly = false
+    private var favoritesOnly = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,6 +58,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         scenarioStore = ScenarioStore(this, productConfig.productName)
         liveCache = LiveDashboardCache(this, productConfig.productName)
         actionHistory = ActionHistoryStore(this, productConfig.productName)
+        libraryStore = DashboardLibraryStore(this, productConfig.productName)
         workflowRepository = liveWorkflowRepository()
 
         profileText = findViewById(R.id.profileText)
@@ -89,6 +93,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         renderNavigation(user)
         renderLiveSection()
         renderHistorySection()
+        renderRecentSection()
 
         val demoCards = dashboardCards(user)
             .filter { matchesDashboardCard(it) }
@@ -103,7 +108,12 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             }
         }
 
-        if (activeSection == ALL_SECTIONS && searchQuery.isBlank() && !actionableOnly) {
+        if (
+            activeSection == ALL_SECTIONS &&
+            searchQuery.isBlank() &&
+            !actionableOnly &&
+            !favoritesOnly
+        ) {
             val resetButton = Button(this).apply {
                 text = "Сбросить прогресс готовых сценариев"
                 isAllCaps = false
@@ -184,6 +194,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
                     searchQuery = ""
                     activeSection = ALL_SECTIONS
                     actionableOnly = false
+                    favoritesOnly = false
                     render(user)
                 }
             },
@@ -228,7 +239,31 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
                     }
                 }
             },
-            fullWidthParams(bottom = 14)
+            fullWidthParams(bottom = 4)
+        )
+
+        cardsContainer.addView(
+            CheckBox(this).apply {
+                text = "Только избранные карточки"
+                isChecked = favoritesOnly
+                setOnCheckedChangeListener { _, checked ->
+                    if (favoritesOnly != checked) {
+                        favoritesOnly = checked
+                        render(user)
+                    }
+                }
+            },
+            fullWidthParams(bottom = 4)
+        )
+
+        cardsContainer.addView(
+            TextView(this).apply {
+                text = "Удерживайте карточку, чтобы добавить или удалить её из избранного"
+                textSize = 13f
+                setTextColor(Color.DKGRAY)
+                setPadding(18, 0, 18, 14)
+            },
+            fullWidthParams()
         )
     }
 
@@ -356,6 +391,86 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         }
     }
 
+    private fun renderRecentSection() {
+        if (
+            activeSection != RECENT_SECTION &&
+            searchQuery.isBlank()
+        ) {
+            return
+        }
+
+        val role = currentUser?.role ?: return
+        val entries = libraryStore.recent(role)
+            .filter { matchesRecentEntry(it) }
+
+        if (entries.isEmpty() && activeSection != RECENT_SECTION) return
+
+        addSectionTitle(RECENT_SECTION)
+
+        if (entries.isEmpty()) {
+            cardsContainer.addView(
+                TextView(this).apply {
+                    text = "Недавно просмотренных карточек пока нет"
+                    setPadding(18, 10, 18, 10)
+                },
+                fullWidthParams()
+            )
+            return
+        }
+
+        cardsContainer.addView(
+            Button(this).apply {
+                text = "Очистить недавно просмотренные"
+                isAllCaps = false
+                setOnClickListener {
+                    libraryStore.clearRecent(role)
+                    currentUser?.let { render(it) }
+                }
+            },
+            fullWidthParams(bottom = 8)
+        )
+
+        entries.forEach { entry ->
+            cardsContainer.addView(
+                recentEntryButton(entry),
+                fullWidthParams(bottom = 8)
+            )
+        }
+    }
+
+    private fun recentEntryButton(entry: DashboardLibraryEntry): Button =
+        Button(this).apply {
+            text = buildString {
+                if (libraryStore.isFavorite(entry.role, entry.key)) append("★ ")
+                append(entry.title)
+                if (entry.badge.isNotBlank()) append(" · ${entry.badge}")
+                append("\n${entry.description}")
+                append("\nПросмотрено ${formatTimestamp(entry.viewedAtMillis)}")
+            }
+            isAllCaps = false
+            setTextColor(Color.DKGRAY)
+            setPadding(16, 16, 16, 16)
+            setOnClickListener {
+                AlertDialog.Builder(this@BaseDashboardActivity)
+                    .setTitle(entry.title)
+                    .setMessage(entry.details)
+                    .setNegativeButton("Закрыть", null)
+                    .setNeutralButton("Поделиться") { _, _ ->
+                        shareDashboardItem(
+                            entry.title,
+                            entry.description,
+                            entry.details
+                        )
+                    }
+                    .setPositiveButton("Готово", null)
+                    .show()
+            }
+            setOnLongClickListener {
+                toggleFavorite(entry.key, entry.title, entry.role)
+                true
+            }
+        }
+
     private fun historyEntryView(entry: ActionHistoryEntry): TextView =
         TextView(this).apply {
             val marker = if (entry.successful) "✓" else "!"
@@ -388,7 +503,10 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
 
     private fun liveCardButton(card: LiveDashboardCard): Button =
         Button(this).apply {
+            val key = liveFavoriteKey(card)
+            val role = currentUser?.role.orEmpty()
             text = buildString {
+                if (libraryStore.isFavorite(role, key)) append("★ ")
                 append(card.title)
                 if (card.badge.isNotBlank()) append(" · ${card.badge}")
                 append("\n${card.description}")
@@ -398,13 +516,40 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             setTextColor(Color.DKGRAY)
             setPadding(16, 18, 16, 18)
             setOnClickListener { openLiveCard(card) }
+            setOnLongClickListener {
+                toggleFavorite(key, card.title, role)
+                true
+            }
         }
 
     private fun openLiveCard(card: LiveDashboardCard) {
+        currentUser?.let { user ->
+            libraryStore.recordRecent(
+                user.role,
+                DashboardLibraryEntry(
+                    key = liveFavoriteKey(card),
+                    role = user.role,
+                    title = card.title,
+                    description = card.description,
+                    details = card.details,
+                    section = card.section,
+                    badge = card.badge,
+                    viewedAtMillis = System.currentTimeMillis()
+                )
+            )
+        }
+
         val dialog = AlertDialog.Builder(this)
             .setTitle(card.title)
             .setMessage(card.details)
             .setNegativeButton("Закрыть", null)
+            .setNeutralButton("Поделиться") { _, _ ->
+                shareDashboardItem(
+                    card.title,
+                    card.description,
+                    card.details
+                )
+            }
 
         if (
             !showingCachedData &&
@@ -603,7 +748,10 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         }
 
         return Button(this).apply {
+            val key = demoFavoriteKey(card)
+            val role = currentUser?.role.orEmpty()
             text = buildString {
+                if (libraryStore.isFavorite(role, key)) append("★ ")
                 append(card.title)
                 if (card.badge.isNotBlank()) append(" · ${card.badge}")
                 append(progress)
@@ -613,10 +761,30 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             setTextColor(Color.DKGRAY)
             setPadding(16, 18, 16, 18)
             setOnClickListener { openScenario(card) }
+            setOnLongClickListener {
+                toggleFavorite(key, card.title, role)
+                true
+            }
         }
     }
 
     private fun openScenario(card: DashboardCard) {
+        currentUser?.let { user ->
+            libraryStore.recordRecent(
+                user.role,
+                DashboardLibraryEntry(
+                    key = demoFavoriteKey(card),
+                    role = user.role,
+                    title = card.title,
+                    description = card.description,
+                    details = card.actionMessage,
+                    section = card.section,
+                    badge = card.badge,
+                    viewedAtMillis = System.currentTimeMillis()
+                )
+            )
+        }
+
         val step = scenarioStore.step(card.id)
         val progressText = if (card.steps.isEmpty()) {
             card.actionMessage
@@ -742,7 +910,8 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         val sections = linkedSetOf(
             ALL_SECTIONS,
             SERVER_SECTION,
-            HISTORY_SECTION
+            HISTORY_SECTION,
+            RECENT_SECTION
         )
 
         livePayload?.cards?.forEach { sections += it.section }
@@ -757,6 +926,15 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private fun matchesLiveCard(card: LiveDashboardCard): Boolean {
         if (!sectionVisible(card.section) && activeSection != SERVER_SECTION) return false
         if (actionableOnly && card.actionId.isNullOrBlank()) return false
+        if (
+            favoritesOnly &&
+            !libraryStore.isFavorite(
+                currentUser?.role.orEmpty(),
+                liveFavoriteKey(card)
+            )
+        ) {
+            return false
+        }
 
         return matchesQuery(
             card.title,
@@ -770,6 +948,15 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private fun matchesDashboardCard(card: DashboardCard): Boolean {
         if (!sectionVisible(card.section)) return false
         if (actionableOnly && card.steps.isEmpty()) return false
+        if (
+            favoritesOnly &&
+            !libraryStore.isFavorite(
+                currentUser?.role.orEmpty(),
+                demoFavoriteKey(card)
+            )
+        ) {
+            return false
+        }
 
         return matchesQuery(
             card.title,
@@ -788,6 +975,24 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         return matchesQuery(entry.title, entry.message)
     }
 
+    private fun matchesRecentEntry(entry: DashboardLibraryEntry): Boolean {
+        if (activeSection != ALL_SECTIONS && activeSection != RECENT_SECTION) {
+            return false
+        }
+        if (actionableOnly) return false
+        if (favoritesOnly && !libraryStore.isFavorite(entry.role, entry.key)) {
+            return false
+        }
+
+        return matchesQuery(
+            entry.title,
+            entry.description,
+            entry.details,
+            entry.section,
+            entry.badge
+        )
+    }
+
     private fun matchesQuery(vararg values: String): Boolean {
         val query = searchQuery.trim().lowercase(Locale.getDefault())
         if (query.isBlank()) return true
@@ -800,16 +1005,57 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private fun showOverviewMetrics(): Boolean =
         activeSection == ALL_SECTIONS &&
             searchQuery.isBlank() &&
-            !actionableOnly
+            !actionableOnly &&
+            !favoritesOnly
 
     private fun hasVisibleCards(user: ApiUser): Boolean {
         val hasLive = sectionVisible(SERVER_SECTION) &&
             livePayload?.cards?.any { matchesLiveCard(it) } == true
         val hasHistory = sectionVisible(HISTORY_SECTION) &&
             actionHistory.entries().any { matchesHistoryEntry(it) }
+        val hasRecent = sectionVisible(RECENT_SECTION) &&
+            libraryStore.recent(user.role).any { matchesRecentEntry(it) }
         val hasDemo = dashboardCards(user).any { matchesDashboardCard(it) }
 
-        return hasLive || hasHistory || hasDemo
+        return hasLive || hasHistory || hasRecent || hasDemo
+    }
+
+    private fun toggleFavorite(key: String, title: String, role: String) {
+        val favorite = libraryStore.toggleFavorite(role, key)
+        Toast.makeText(
+            this,
+            if (favorite) "Добавлено в избранное: $title"
+            else "Удалено из избранного: $title",
+            Toast.LENGTH_SHORT
+        ).show()
+        currentUser?.let { render(it) }
+    }
+
+    private fun liveFavoriteKey(card: LiveDashboardCard): String =
+        "live:${card.id}"
+
+    private fun demoFavoriteKey(card: DashboardCard): String =
+        "demo:${card.id}"
+
+    private fun shareDashboardItem(
+        title: String,
+        description: String,
+        details: String
+    ) {
+        val text = buildString {
+            append(title)
+            if (description.isNotBlank()) append("\n$description")
+            if (details.isNotBlank()) append("\n\n$details")
+            append("\n\n${productConfig.productName}")
+        }
+
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, title)
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+
+        startActivity(Intent.createChooser(intent, "Поделиться карточкой"))
     }
 
     private fun formatTimestamp(timestampMillis: Long): String {
@@ -849,6 +1095,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         const val ALL_SECTIONS = "Все"
         const val SERVER_SECTION = "Данные сервера"
         const val HISTORY_SECTION = "История действий"
+        const val RECENT_SECTION = "Недавние"
     }
 }
 

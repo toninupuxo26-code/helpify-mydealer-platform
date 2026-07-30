@@ -47,21 +47,21 @@ grep -Fq 'renderHistorySection' "$DASH" \
 grep -Fq 'actionHistory.add' "$DASH" \
   && pass "action result recording" || fail "action result recording"
 
-grep -Fq 'versionCode 1200' \
+grep -Fq 'versionCode 1300' \
   "$ROOT/implementation/android-native/helpify/build.gradle" \
-  && pass "Helpify versionCode 1200" || fail "Helpify versionCode 1200"
+  && pass "Helpify versionCode 1300" || fail "Helpify versionCode 1300"
 
-grep -Fq "versionName '0.12.0'" \
+grep -Fq "versionName '0.13.0'" \
   "$ROOT/implementation/android-native/helpify/build.gradle" \
-  && pass "Helpify versionName 0.12.0" || fail "Helpify versionName 0.12.0"
+  && pass "Helpify versionName 0.13.0" || fail "Helpify versionName 0.13.0"
 
-grep -Fq 'versionCode 1200' \
+grep -Fq 'versionCode 1300' \
   "$ROOT/implementation/android-native/mydealer/build.gradle" \
-  && pass "MyDealer versionCode 1200" || fail "MyDealer versionCode 1200"
+  && pass "MyDealer versionCode 1300" || fail "MyDealer versionCode 1300"
 
-grep -Fq "versionName '0.12.0'" \
+grep -Fq "versionName '0.13.0'" \
   "$ROOT/implementation/android-native/mydealer/build.gradle" \
-  && pass "MyDealer versionName 0.12.0" || fail "MyDealer versionName 0.12.0"
+  && pass "MyDealer versionName 0.13.0" || fail "MyDealer versionName 0.13.0"
 
 if grep -RIniE 'reconstruction|retrospective|synthetic|реконструк|ретроспектив|синтет' \
   "$CORE/LiveDashboardCache.kt" \

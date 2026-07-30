@@ -1,3 +1,10 @@
+## 0.13.0 — Android favourites, recent views and sharing
+
+- Added persistent favourites for server and guided cards.
+- Added a favourites-only dashboard filter.
+- Added a recent views section with twenty entries per role.
+- Added card sharing through the Android share sheet.
+
 ## 0.12.0 — Android offline cache, search and history
 
 - Added read-only fallback to the last successful server dashboard.

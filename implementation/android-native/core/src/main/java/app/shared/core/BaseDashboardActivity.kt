@@ -3,9 +3,12 @@ package app.shared.core
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
+import android.text.InputType
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -186,7 +189,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
 
         if (!card.actionId.isNullOrBlank() && card.actionLabel.isNotBlank()) {
             dialog.setPositiveButton(card.actionLabel) { _, _ ->
-                performLiveAction(card)
+                prepareLiveAction(card)
             }
         } else {
             dialog.setPositiveButton("Готово", null)
@@ -195,7 +198,148 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun performLiveAction(card: LiveDashboardCard) {
+    private fun prepareLiveAction(card: LiveDashboardCard) {
+        when {
+            card.form != null -> openLiveActionForm(card)
+            card.confirmationMessage.isNotBlank() -> {
+                AlertDialog.Builder(this)
+                    .setTitle(card.actionLabel)
+                    .setMessage(card.confirmationMessage)
+                    .setNegativeButton("Отмена", null)
+                    .setPositiveButton("Подтвердить") { _, _ ->
+                        performLiveAction(card, emptyMap())
+                    }
+                    .show()
+            }
+            else -> performLiveAction(card, emptyMap())
+        }
+    }
+
+    private fun openLiveActionForm(card: LiveDashboardCard) {
+        val form = card.form ?: return
+        val entries = linkedMapOf<String, EditText>()
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 12, 32, 8)
+        }
+
+        form.fields.forEach { field ->
+            content.addView(
+                TextView(this).apply {
+                    text = field.label
+                    textSize = 15f
+                    setTextColor(Color.DKGRAY)
+                    setPadding(0, 12, 0, 4)
+                },
+                fullWidthParams()
+            )
+
+            val entry = EditText(this).apply {
+                hint = field.hint
+                setText(field.defaultValue)
+                inputType = inputTypeFor(field.type)
+                if (field.type == LiveFormFieldType.MULTILINE) {
+                    minLines = 3
+                    maxLines = 6
+                }
+            }
+
+            entries[field.key] = entry
+            content.addView(entry, fullWidthParams())
+        }
+
+        val scroll = ScrollView(this).apply {
+            addView(
+                content,
+                ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(form.title)
+            .setView(scroll)
+            .setNegativeButton("Отмена", null)
+            .setPositiveButton(form.submitLabel, null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val values = entries.mapValues { it.value.text.toString().trim() }
+                val error = validateLiveForm(form, values)
+
+                if (error != null) {
+                    Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+                } else {
+                    dialog.dismiss()
+                    performLiveAction(card, values)
+                }
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun inputTypeFor(type: LiveFormFieldType): Int = when (type) {
+        LiveFormFieldType.TEXT ->
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+
+        LiveFormFieldType.MULTILINE ->
+            InputType.TYPE_CLASS_TEXT or
+                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE
+
+        LiveFormFieldType.DECIMAL ->
+            InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+
+        LiveFormFieldType.INTEGER ->
+            InputType.TYPE_CLASS_NUMBER
+    }
+
+    private fun validateLiveForm(
+        form: LiveActionForm,
+        values: Map<String, String>
+    ): String? {
+        form.fields.forEach { field ->
+            val value = values[field.key].orEmpty()
+
+            if (field.required && value.isBlank()) {
+                return "Заполните поле «${field.label}»"
+            }
+
+            if (value.isNotBlank() && field.type == LiveFormFieldType.DECIMAL) {
+                val number = value.replace(",", ".").toDoubleOrNull()
+                    ?: return "Поле «${field.label}» должно быть числом"
+
+                if (field.minimumValue != null && number < field.minimumValue) {
+                    return "Поле «${field.label}» должно быть не меньше " +
+                        field.minimumValue
+                }
+            }
+
+            if (value.isNotBlank() && field.type == LiveFormFieldType.INTEGER) {
+                val number = value.toIntOrNull()
+                    ?: return "Поле «${field.label}» должно быть целым числом"
+
+                if (
+                    field.minimumValue != null &&
+                    number.toDouble() < field.minimumValue
+                ) {
+                    return "Поле «${field.label}» должно быть не меньше " +
+                        field.minimumValue.toInt()
+                }
+            }
+        }
+
+        return null
+    }
+
+    private fun performLiveAction(
+        card: LiveDashboardCard,
+        values: Map<String, String>
+    ) {
         val repository = workflowRepository ?: return
         val token = sessionStore.token() ?: return
         val user = currentUser ?: return
@@ -205,7 +349,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         render(user)
 
         executor.execute {
-            val result = repository.perform(token, user, card)
+            val result = repository.perform(token, user, card, values)
             runOnUiThread {
                 liveLoading = false
                 Toast.makeText(

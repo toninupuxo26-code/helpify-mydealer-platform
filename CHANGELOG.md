@@ -1,3 +1,10 @@
+## 0.11.0 — Android live forms and data packs
+
+- Replaced fixed quick-action payloads with validated Android forms.
+- Added explicit confirmations for workflow state changes.
+- Added server-side Helpify task and offer data packs.
+- Added server-side MyDealer product and cart data packs.
+
 ## 0.10.0 — Android live workflows
 
 - Connected both Android dashboards to the authenticated server APIs.

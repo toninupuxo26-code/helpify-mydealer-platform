@@ -4,15 +4,21 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
 import android.text.InputType
+import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.Executors
 
 abstract class BaseDashboardActivity : AppCompatActivity() {
@@ -26,6 +32,8 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private lateinit var authRepository: AuthRepository
     private lateinit var sessionStore: SessionStore
     private lateinit var scenarioStore: ScenarioStore
+    private lateinit var liveCache: LiveDashboardCache
+    private lateinit var actionHistory: ActionHistoryStore
     private lateinit var profileText: TextView
     private lateinit var cardsContainer: LinearLayout
     private var workflowRepository: LiveWorkflowRepository? = null
@@ -33,6 +41,10 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private var livePayload: LiveDashboardPayload? = null
     private var liveMessage: String = "Данные сервера ещё не загружены"
     private var liveLoading = false
+    private var showingCachedData = false
+    private var searchQuery = ""
+    private var activeSection = ALL_SECTIONS
+    private var actionableOnly = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +53,8 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         authRepository = AuthRepository(productConfig.apiBaseUrl)
         sessionStore = SessionStore(this, productConfig.productName)
         scenarioStore = ScenarioStore(this, productConfig.productName)
+        liveCache = LiveDashboardCache(this, productConfig.productName)
+        actionHistory = ActionHistoryStore(this, productConfig.productName)
         workflowRepository = liveWorkflowRepository()
 
         profileText = findViewById(R.id.profileText)
@@ -57,6 +71,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             return
         }
 
+        restoreCachedLiveData(currentUser!!)
         render(currentUser!!)
         refreshLiveData()
     }
@@ -71,49 +86,164 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         profileText.text = "${user.name}\n${user.email}\nРоль: ${user.role}"
         cardsContainer.removeAllViews()
 
+        renderNavigation(user)
         renderLiveSection()
+        renderHistorySection()
 
-        val metrics = dashboardMetrics(user)
-        if (metrics.isNotEmpty()) {
-            addSectionTitle("Демо-обзор")
-            metrics.forEach { metric ->
-                cardsContainer.addView(metricView(metric), fullWidthParams())
-            }
-        }
+        val demoCards = dashboardCards(user)
+            .filter { matchesDashboardCard(it) }
 
-        val resetButton = Button(this).apply {
-            text = "Сбросить прогресс готовых сценариев"
-            isAllCaps = false
-            setOnClickListener {
-                scenarioStore.resetAll()
-                Toast.makeText(
-                    this@BaseDashboardActivity,
-                    "Прогресс сценариев сброшен",
-                    Toast.LENGTH_SHORT
-                ).show()
-                render(user)
-            }
-        }
-        cardsContainer.addView(resetButton, fullWidthParams(bottom = 18))
-
-        dashboardCards(user)
-            .groupBy { it.section }
-            .forEach { (section, sectionCards) ->
-                addSectionTitle(section)
-                sectionCards.forEach { card ->
-                    cardsContainer.addView(cardButton(card), fullWidthParams(bottom = 10))
+        if (showOverviewMetrics()) {
+            val metrics = dashboardMetrics(user)
+            if (metrics.isNotEmpty()) {
+                addSectionTitle("Демо-обзор")
+                metrics.forEach { metric ->
+                    cardsContainer.addView(metricView(metric), fullWidthParams())
                 }
             }
+        }
+
+        if (activeSection == ALL_SECTIONS && searchQuery.isBlank() && !actionableOnly) {
+            val resetButton = Button(this).apply {
+                text = "Сбросить прогресс готовых сценариев"
+                isAllCaps = false
+                setOnClickListener {
+                    scenarioStore.resetAll()
+                    Toast.makeText(
+                        this@BaseDashboardActivity,
+                        "Прогресс сценариев сброшен",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    render(user)
+                }
+            }
+            cardsContainer.addView(resetButton, fullWidthParams(bottom = 18))
+        }
+
+        if (demoCards.isNotEmpty()) {
+            demoCards
+                .groupBy { it.section }
+                .forEach { (section, sectionCards) ->
+                    addSectionTitle(section)
+                    sectionCards.forEach { card ->
+                        cardsContainer.addView(
+                            cardButton(card),
+                            fullWidthParams(bottom = 10)
+                        )
+                    }
+                }
+        }
+
+        if (!hasVisibleCards(user)) {
+            cardsContainer.addView(
+                TextView(this).apply {
+                    text = "По выбранным условиям ничего не найдено"
+                    textSize = 16f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.DKGRAY)
+                    setPadding(18, 28, 18, 28)
+                },
+                fullWidthParams()
+            )
+        }
+    }
+
+    private fun renderNavigation(user: ApiUser) {
+        addSectionTitle("Поиск и фильтры")
+
+        val searchInput = EditText(this).apply {
+            hint = "Название, описание, раздел или статус"
+            setText(searchQuery)
+            inputType =
+                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setSingleLine(true)
+        }
+        cardsContainer.addView(searchInput, fullWidthParams(bottom = 8))
+
+        val searchActions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        searchActions.addView(
+            Button(this).apply {
+                text = "Найти"
+                isAllCaps = false
+                setOnClickListener {
+                    searchQuery = searchInput.text.toString().trim()
+                    render(user)
+                }
+            },
+            weightedParams()
+        )
+
+        searchActions.addView(
+            Button(this).apply {
+                text = "Сбросить"
+                isAllCaps = false
+                setOnClickListener {
+                    searchQuery = ""
+                    activeSection = ALL_SECTIONS
+                    actionableOnly = false
+                    render(user)
+                }
+            },
+            weightedParams()
+        )
+
+        cardsContainer.addView(searchActions, fullWidthParams(bottom = 8))
+
+        val sectionRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        availableSections(user).forEach { section ->
+            sectionRow.addView(
+                Button(this).apply {
+                    text = if (section == activeSection) "✓ $section" else section
+                    isAllCaps = false
+                    setOnClickListener {
+                        activeSection = section
+                        render(user)
+                    }
+                }
+            )
+        }
+
+        cardsContainer.addView(
+            HorizontalScrollView(this).apply {
+                isHorizontalScrollBarEnabled = false
+                addView(sectionRow)
+            },
+            fullWidthParams(bottom = 8)
+        )
+
+        cardsContainer.addView(
+            CheckBox(this).apply {
+                text = "Только карточки с доступным действием"
+                isChecked = actionableOnly
+                setOnCheckedChangeListener { _, checked ->
+                    if (actionableOnly != checked) {
+                        actionableOnly = checked
+                        render(user)
+                    }
+                }
+            },
+            fullWidthParams(bottom = 14)
+        )
     }
 
     private fun renderLiveSection() {
         if (workflowRepository == null) return
+        if (!sectionVisible(SERVER_SECTION)) return
 
-        addSectionTitle("Данные сервера")
+        addSectionTitle(SERVER_SECTION)
 
         cardsContainer.addView(
             TextView(this).apply {
-                text = if (liveLoading) "Загрузка…" else liveMessage
+                text = buildString {
+                    if (showingCachedData) append("Офлайн-кэш · ")
+                    append(if (liveLoading) "Загрузка…" else liveMessage)
+                }
                 textSize = 15f
                 setTextColor(Color.DKGRAY)
                 setPadding(18, 8, 18, 12)
@@ -121,21 +251,52 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             fullWidthParams()
         )
 
-        val refreshButton = Button(this).apply {
-            text = if (liveLoading) "Загрузка данных…" else "Обновить данные сервера"
-            isAllCaps = false
-            isEnabled = !liveLoading
-            setOnClickListener { refreshLiveData() }
+        val liveControls = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
         }
-        cardsContainer.addView(refreshButton, fullWidthParams(bottom = 12))
+
+        liveControls.addView(
+            Button(this).apply {
+                text = if (liveLoading) "Загрузка…" else "Обновить"
+                isAllCaps = false
+                isEnabled = !liveLoading
+                setOnClickListener { refreshLiveData() }
+            },
+            weightedParams()
+        )
+
+        liveControls.addView(
+            Button(this).apply {
+                text = "Очистить кэш"
+                isAllCaps = false
+                setOnClickListener {
+                    currentUser?.let { user ->
+                        liveCache.clear(user.role)
+                        if (showingCachedData) {
+                            livePayload = null
+                            showingCachedData = false
+                            liveMessage = "Офлайн-кэш очищен"
+                        }
+                        render(user)
+                    }
+                }
+            },
+            weightedParams()
+        )
+
+        cardsContainer.addView(liveControls, fullWidthParams(bottom = 12))
 
         val payload = livePayload ?: return
 
-        payload.metrics.forEach { metric ->
-            cardsContainer.addView(metricView(metric), fullWidthParams())
+        if (showOverviewMetrics()) {
+            payload.metrics.forEach { metric ->
+                cardsContainer.addView(metricView(metric), fullWidthParams())
+            }
         }
 
-        payload.cards
+        val liveCards = payload.cards.filter { matchesLiveCard(it) }
+
+        liveCards
             .groupBy { it.section }
             .forEach { (section, sectionCards) ->
                 addSectionTitle(section)
@@ -147,6 +308,63 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
                 }
             }
     }
+
+    private fun renderHistorySection() {
+        if (!sectionVisible(HISTORY_SECTION)) return
+
+        val entries = actionHistory.entries()
+            .filter { matchesHistoryEntry(it) }
+
+        if (
+            entries.isEmpty() &&
+            activeSection != HISTORY_SECTION &&
+            searchQuery.isBlank()
+        ) {
+            return
+        }
+
+        addSectionTitle(HISTORY_SECTION)
+
+        if (entries.isEmpty()) {
+            cardsContainer.addView(
+                TextView(this).apply {
+                    text = "История серверных действий пока пуста"
+                    setPadding(18, 10, 18, 10)
+                },
+                fullWidthParams()
+            )
+            return
+        }
+
+        cardsContainer.addView(
+            Button(this).apply {
+                text = "Очистить историю действий"
+                isAllCaps = false
+                setOnClickListener {
+                    actionHistory.clear()
+                    currentUser?.let { render(it) }
+                }
+            },
+            fullWidthParams(bottom = 8)
+        )
+
+        entries.forEach { entry ->
+            cardsContainer.addView(
+                historyEntryView(entry),
+                fullWidthParams(bottom = 8)
+            )
+        }
+    }
+
+    private fun historyEntryView(entry: ActionHistoryEntry): TextView =
+        TextView(this).apply {
+            val marker = if (entry.successful) "✓" else "!"
+            text = "$marker ${entry.title}\n" +
+                "${formatTimestamp(entry.timestampMillis)} · ${entry.message}"
+            textSize = 15f
+            setTextColor(if (entry.successful) Color.DKGRAY else Color.RED)
+            setPadding(18, 12, 18, 12)
+        }
 
     private fun metricView(metric: DashboardMetric): TextView = TextView(this).apply {
         text = "${metric.value} — ${metric.label}"
@@ -174,6 +392,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
                 append(card.title)
                 if (card.badge.isNotBlank()) append(" · ${card.badge}")
                 append("\n${card.description}")
+                if (showingCachedData) append("\nСохранённая копия · действия отключены")
             }
             isAllCaps = false
             setTextColor(Color.DKGRAY)
@@ -187,7 +406,11 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             .setMessage(card.details)
             .setNegativeButton("Закрыть", null)
 
-        if (!card.actionId.isNullOrBlank() && card.actionLabel.isNotBlank()) {
+        if (
+            !showingCachedData &&
+            !card.actionId.isNullOrBlank() &&
+            card.actionLabel.isNotBlank()
+        ) {
             dialog.setPositiveButton(card.actionLabel) { _, _ ->
                 prepareLiveAction(card)
             }
@@ -350,6 +573,8 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
 
         executor.execute {
             val result = repository.perform(token, user, card, values)
+            actionHistory.add(card.title, result)
+
             runOnUiThread {
                 liveLoading = false
                 Toast.makeText(
@@ -436,13 +661,12 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun fullWidthParams(bottom: Int = 0): LinearLayout.LayoutParams =
-        LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply {
-            bottomMargin = bottom
-        }
+    private fun restoreCachedLiveData(user: ApiUser) {
+        val cached = liveCache.load(user.role) ?: return
+        livePayload = cached.payload
+        showingCachedData = true
+        liveMessage = "сохранено ${formatTimestamp(cached.savedAtMillis)}"
+    }
 
     private fun refreshAll() {
         val token = sessionStore.token() ?: return
@@ -483,11 +707,24 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             val (result, payload) = repository.load(token, user)
             runOnUiThread {
                 liveLoading = false
+
                 if (payload != null) {
                     livePayload = payload
-                    liveMessage = payload.message.ifBlank { "Данные сервера обновлены" }
+                    liveCache.save(user.role, payload)
+                    showingCachedData = false
+                    liveMessage = payload.message.ifBlank {
+                        "Данные сервера обновлены"
+                    }
                 } else {
-                    liveMessage = result.message
+                    val cached = liveCache.load(user.role)
+                    if (cached != null) {
+                        livePayload = cached.payload
+                        showingCachedData = true
+                        liveMessage = "${result.message} · кэш " +
+                            formatTimestamp(cached.savedAtMillis)
+                    } else {
+                        liveMessage = result.message
+                    }
                 }
 
                 if (result.statusCode == 401) {
@@ -501,6 +738,103 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         }
     }
 
+    private fun availableSections(user: ApiUser): List<String> {
+        val sections = linkedSetOf(
+            ALL_SECTIONS,
+            SERVER_SECTION,
+            HISTORY_SECTION
+        )
+
+        livePayload?.cards?.forEach { sections += it.section }
+        dashboardCards(user).forEach { sections += it.section }
+
+        return sections.toList()
+    }
+
+    private fun sectionVisible(section: String): Boolean =
+        activeSection == ALL_SECTIONS || activeSection == section
+
+    private fun matchesLiveCard(card: LiveDashboardCard): Boolean {
+        if (!sectionVisible(card.section) && activeSection != SERVER_SECTION) return false
+        if (actionableOnly && card.actionId.isNullOrBlank()) return false
+
+        return matchesQuery(
+            card.title,
+            card.description,
+            card.details,
+            card.section,
+            card.badge
+        )
+    }
+
+    private fun matchesDashboardCard(card: DashboardCard): Boolean {
+        if (!sectionVisible(card.section)) return false
+        if (actionableOnly && card.steps.isEmpty()) return false
+
+        return matchesQuery(
+            card.title,
+            card.description,
+            card.actionMessage,
+            card.section,
+            card.badge
+        )
+    }
+
+    private fun matchesHistoryEntry(entry: ActionHistoryEntry): Boolean {
+        if (activeSection != ALL_SECTIONS && activeSection != HISTORY_SECTION) {
+            return false
+        }
+
+        return matchesQuery(entry.title, entry.message)
+    }
+
+    private fun matchesQuery(vararg values: String): Boolean {
+        val query = searchQuery.trim().lowercase(Locale.getDefault())
+        if (query.isBlank()) return true
+
+        return values.any { value ->
+            value.lowercase(Locale.getDefault()).contains(query)
+        }
+    }
+
+    private fun showOverviewMetrics(): Boolean =
+        activeSection == ALL_SECTIONS &&
+            searchQuery.isBlank() &&
+            !actionableOnly
+
+    private fun hasVisibleCards(user: ApiUser): Boolean {
+        val hasLive = sectionVisible(SERVER_SECTION) &&
+            livePayload?.cards?.any { matchesLiveCard(it) } == true
+        val hasHistory = sectionVisible(HISTORY_SECTION) &&
+            actionHistory.entries().any { matchesHistoryEntry(it) }
+        val hasDemo = dashboardCards(user).any { matchesDashboardCard(it) }
+
+        return hasLive || hasHistory || hasDemo
+    }
+
+    private fun formatTimestamp(timestampMillis: Long): String {
+        if (timestampMillis <= 0L) return "неизвестное время"
+        return SimpleDateFormat(
+            "dd.MM.yyyy HH:mm",
+            Locale.getDefault()
+        ).format(Date(timestampMillis))
+    }
+
+    private fun fullWidthParams(bottom: Int = 0): LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            bottomMargin = bottom
+        }
+
+    private fun weightedParams(): LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(
+            0,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            1f
+        )
+
     private fun logout() {
         val token = sessionStore.token()
         sessionStore.clear()
@@ -509,6 +843,12 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         }
         returnToAuth()
         finish()
+    }
+
+    private companion object {
+        const val ALL_SECTIONS = "Все"
+        const val SERVER_SECTION = "Данные сервера"
+        const val HISTORY_SECTION = "История действий"
     }
 }
 

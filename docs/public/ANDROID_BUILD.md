@@ -24,11 +24,11 @@ sudo ./scripts/android_build.sh
 ## Artifacts
 
 ```text
-/var/lib/helpify-mydealer/android-builds/v0.11.0/
-├── Helpify-v0.11.0-debug.apk
-├── MyDealer-v0.11.0-debug.apk
-├── Helpify-v0.11.0-badging.txt
-├── MyDealer-v0.11.0-badging.txt
+/var/lib/helpify-mydealer/android-builds/v0.12.0/
+├── Helpify-v0.12.0-debug.apk
+├── MyDealer-v0.12.0-debug.apk
+├── Helpify-v0.12.0-badging.txt
+├── MyDealer-v0.12.0-badging.txt
 ├── SHA256SUMS.txt
 └── build.env
 ```

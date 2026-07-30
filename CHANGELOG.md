@@ -1,3 +1,10 @@
+## 0.12.0 — Android offline cache, search and history
+
+- Added read-only fallback to the last successful server dashboard.
+- Added search and dynamic section filters.
+- Added an actionable-card filter.
+- Added persistent server-action history with timestamps and results.
+
 ## 0.11.0 — Android live forms and data packs
 
 - Replaced fixed quick-action payloads with validated Android forms.

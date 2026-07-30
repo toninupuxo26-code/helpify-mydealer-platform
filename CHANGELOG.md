@@ -1,3 +1,10 @@
+## 0.14.0 — Android server change notifications
+
+- Added detection of new server cards and workflow status changes.
+- Added an in-app events section with read state and filtering.
+- Added configurable Android summary notifications.
+- Suppressed notifications during the first synchronization baseline.
+
 ## 0.13.0 — Android favourites, recent views and sharing
 
 - Added persistent favourites for server and guided cards.

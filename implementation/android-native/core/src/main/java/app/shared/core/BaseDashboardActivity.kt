@@ -36,6 +36,8 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private lateinit var liveCache: LiveDashboardCache
     private lateinit var actionHistory: ActionHistoryStore
     private lateinit var libraryStore: DashboardLibraryStore
+    private lateinit var liveUpdateStore: LiveUpdateStore
+    private lateinit var liveUpdateNotifier: LiveUpdateNotifier
     private lateinit var profileText: TextView
     private lateinit var cardsContainer: LinearLayout
     private var workflowRepository: LiveWorkflowRepository? = null
@@ -48,6 +50,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private var activeSection = ALL_SECTIONS
     private var actionableOnly = false
     private var favoritesOnly = false
+    private var unreadUpdatesOnly = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +62,8 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         liveCache = LiveDashboardCache(this, productConfig.productName)
         actionHistory = ActionHistoryStore(this, productConfig.productName)
         libraryStore = DashboardLibraryStore(this, productConfig.productName)
+        liveUpdateStore = LiveUpdateStore(this, productConfig.productName)
+        liveUpdateNotifier = LiveUpdateNotifier(this, productConfig.productName)
         workflowRepository = liveWorkflowRepository()
 
         profileText = findViewById(R.id.profileText)
@@ -92,6 +97,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
 
         renderNavigation(user)
         renderLiveSection()
+        renderUpdatesSection()
         renderHistorySection()
         renderRecentSection()
 
@@ -112,7 +118,8 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             activeSection == ALL_SECTIONS &&
             searchQuery.isBlank() &&
             !actionableOnly &&
-            !favoritesOnly
+            !favoritesOnly &&
+            !unreadUpdatesOnly
         ) {
             val resetButton = Button(this).apply {
                 text = "Сбросить прогресс готовых сценариев"
@@ -195,6 +202,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
                     activeSection = ALL_SECTIONS
                     actionableOnly = false
                     favoritesOnly = false
+                    unreadUpdatesOnly = false
                     render(user)
                 }
             },
@@ -342,6 +350,177 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
                     )
                 }
             }
+    }
+
+    private fun renderUpdatesSection() {
+        if (!sectionVisible(UPDATES_SECTION)) return
+
+        val user = currentUser ?: return
+        val allEntries = liveUpdateStore.entries(user.role)
+        val entries = allEntries
+            .filter { !unreadUpdatesOnly || !it.read }
+            .filter { matchesUpdateEntry(it) }
+
+        if (
+            entries.isEmpty() &&
+            activeSection != UPDATES_SECTION &&
+            searchQuery.isBlank()
+        ) {
+            return
+        }
+
+        addSectionTitle(UPDATES_SECTION)
+
+        val unreadCount = allEntries.count { !it.read }
+        cardsContainer.addView(
+            TextView(this).apply {
+                text = "Непрочитанных: $unreadCount · всего: ${allEntries.size}"
+                textSize = 15f
+                setTextColor(Color.DKGRAY)
+                setPadding(18, 8, 18, 10)
+            },
+            fullWidthParams()
+        )
+
+        val controls = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        controls.addView(
+            Button(this).apply {
+                text = "Прочитать всё"
+                isAllCaps = false
+                isEnabled = unreadCount > 0
+                setOnClickListener {
+                    liveUpdateStore.markAllRead(user.role)
+                    render(user)
+                }
+            },
+            weightedParams()
+        )
+
+        controls.addView(
+            Button(this).apply {
+                text = "Настройки"
+                isAllCaps = false
+                setOnClickListener { openUpdateSettings(user) }
+            },
+            weightedParams()
+        )
+
+        controls.addView(
+            Button(this).apply {
+                text = "Очистить"
+                isAllCaps = false
+                isEnabled = allEntries.isNotEmpty()
+                setOnClickListener {
+                    liveUpdateStore.clearEvents(user.role)
+                    render(user)
+                }
+            },
+            weightedParams()
+        )
+
+        cardsContainer.addView(controls, fullWidthParams(bottom = 8))
+
+        cardsContainer.addView(
+            CheckBox(this).apply {
+                text = "Только непрочитанные"
+                isChecked = unreadUpdatesOnly
+                setOnCheckedChangeListener { _, checked ->
+                    if (unreadUpdatesOnly != checked) {
+                        unreadUpdatesOnly = checked
+                        render(user)
+                    }
+                }
+            },
+            fullWidthParams(bottom = 8)
+        )
+
+        if (entries.isEmpty()) {
+            cardsContainer.addView(
+                TextView(this).apply {
+                    text = "События по выбранным условиям отсутствуют"
+                    setPadding(18, 10, 18, 10)
+                },
+                fullWidthParams()
+            )
+            return
+        }
+
+        entries.forEach { entry ->
+            cardsContainer.addView(
+                updateEntryButton(entry, user),
+                fullWidthParams(bottom = 8)
+            )
+        }
+    }
+
+    private fun updateEntryButton(
+        entry: LiveUpdateEntry,
+        user: ApiUser
+    ): Button = Button(this).apply {
+        val readMarker = if (entry.read) "" else "● "
+        text = "$readMarker${entry.title}\n" +
+            "${formatTimestamp(entry.timestampMillis)} · ${entry.message}"
+        isAllCaps = false
+        setTextColor(Color.DKGRAY)
+        setPadding(16, 14, 16, 14)
+        setOnClickListener {
+            liveUpdateStore.markRead(user.role, entry.id)
+            AlertDialog.Builder(this@BaseDashboardActivity)
+                .setTitle(entry.title)
+                .setMessage(entry.message)
+                .setNegativeButton("Закрыть", null)
+                .setPositiveButton("Готово") { _, _ -> render(user) }
+                .show()
+        }
+    }
+
+    private fun openUpdateSettings(user: ApiUser) {
+        val settings = liveUpdateStore.settings()
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 12, 32, 8)
+        }
+
+        val enabled = CheckBox(this).apply {
+            text = "Системные уведомления"
+            isChecked = settings.notificationsEnabled
+        }
+        val newItems = CheckBox(this).apply {
+            text = "Новые задачи, товары и заказы"
+            isChecked = settings.notifyNewItems
+        }
+        val statusChanges = CheckBox(this).apply {
+            text = "Изменения статусов"
+            isChecked = settings.notifyStatusChanges
+        }
+
+        content.addView(enabled, fullWidthParams())
+        content.addView(newItems, fullWidthParams())
+        content.addView(statusChanges, fullWidthParams())
+
+        AlertDialog.Builder(this)
+            .setTitle("Уведомления")
+            .setView(content)
+            .setNegativeButton("Отмена", null)
+            .setPositiveButton("Сохранить") { _, _ ->
+                liveUpdateStore.saveSettings(
+                    LiveUpdateSettings(
+                        notificationsEnabled = enabled.isChecked,
+                        notifyNewItems = newItems.isChecked,
+                        notifyStatusChanges = statusChanges.isChecked
+                    )
+                )
+                Toast.makeText(
+                    this,
+                    "Настройки уведомлений сохранены",
+                    Toast.LENGTH_SHORT
+                ).show()
+                render(user)
+            }
+            .show()
     }
 
     private fun renderHistorySection() {
@@ -877,11 +1056,19 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
                 liveLoading = false
 
                 if (payload != null) {
+                    val changes = liveUpdateStore.capture(user.role, payload)
+                    liveUpdateNotifier.notifyChanges(
+                        changes,
+                        liveUpdateStore.settings()
+                    )
                     livePayload = payload
                     liveCache.save(user.role, payload)
                     showingCachedData = false
                     liveMessage = payload.message.ifBlank {
                         "Данные сервера обновлены"
+                    }
+                    if (changes.isNotEmpty()) {
+                        liveMessage += " · новых событий: ${changes.size}"
                     }
                 } else {
                     val cached = liveCache.load(user.role)
@@ -910,6 +1097,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         val sections = linkedSetOf(
             ALL_SECTIONS,
             SERVER_SECTION,
+            UPDATES_SECTION,
             HISTORY_SECTION,
             RECENT_SECTION
         )
@@ -967,6 +1155,18 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         )
     }
 
+    private fun matchesUpdateEntry(entry: LiveUpdateEntry): Boolean {
+        if (activeSection != ALL_SECTIONS && activeSection != UPDATES_SECTION) {
+            return false
+        }
+
+        return matchesQuery(
+            entry.title,
+            entry.message,
+            entry.kind.name
+        )
+    }
+
     private fun matchesHistoryEntry(entry: ActionHistoryEntry): Boolean {
         if (activeSection != ALL_SECTIONS && activeSection != HISTORY_SECTION) {
             return false
@@ -1011,13 +1211,17 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private fun hasVisibleCards(user: ApiUser): Boolean {
         val hasLive = sectionVisible(SERVER_SECTION) &&
             livePayload?.cards?.any { matchesLiveCard(it) } == true
+        val hasUpdates = sectionVisible(UPDATES_SECTION) &&
+            liveUpdateStore.entries(user.role).any {
+                (!unreadUpdatesOnly || !it.read) && matchesUpdateEntry(it)
+            }
         val hasHistory = sectionVisible(HISTORY_SECTION) &&
             actionHistory.entries().any { matchesHistoryEntry(it) }
         val hasRecent = sectionVisible(RECENT_SECTION) &&
             libraryStore.recent(user.role).any { matchesRecentEntry(it) }
         val hasDemo = dashboardCards(user).any { matchesDashboardCard(it) }
 
-        return hasLive || hasHistory || hasRecent || hasDemo
+        return hasLive || hasUpdates || hasHistory || hasRecent || hasDemo
     }
 
     private fun toggleFavorite(key: String, title: String, role: String) {
@@ -1094,6 +1298,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private companion object {
         const val ALL_SECTIONS = "Все"
         const val SERVER_SECTION = "Данные сервера"
+        const val UPDATES_SECTION = "События"
         const val HISTORY_SECTION = "История действий"
         const val RECENT_SECTION = "Недавние"
     }

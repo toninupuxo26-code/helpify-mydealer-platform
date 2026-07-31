@@ -47,18 +47,18 @@ source_checks(){
   grep -Fq 'order-status:' "$MYDEALER/MyDealerLiveWorkflowRepository.kt" \
     && pass "MyDealer order action" || fail "MyDealer order action"
 
-  grep -Fq 'versionCode 1400' \
+  grep -Fq 'versionCode 1500' \
     "$ROOT/implementation/android-native/helpify/build.gradle" \
-    && pass "Helpify versionCode 1400" || fail "Helpify versionCode 1400"
-  grep -Fq "versionName '0.14.0'" \
+    && pass "Helpify versionCode 1500" || fail "Helpify versionCode 1500"
+  grep -Fq "versionName '0.15.0'" \
     "$ROOT/implementation/android-native/helpify/build.gradle" \
-    && pass "Helpify versionName 0.14.0" || fail "Helpify versionName 0.14.0"
-  grep -Fq 'versionCode 1400' \
+    && pass "Helpify versionName 0.15.0" || fail "Helpify versionName 0.15.0"
+  grep -Fq 'versionCode 1500' \
     "$ROOT/implementation/android-native/mydealer/build.gradle" \
-    && pass "MyDealer versionCode 1400" || fail "MyDealer versionCode 1400"
-  grep -Fq "versionName '0.14.0'" \
+    && pass "MyDealer versionCode 1500" || fail "MyDealer versionCode 1500"
+  grep -Fq "versionName '0.15.0'" \
     "$ROOT/implementation/android-native/mydealer/build.gradle" \
-    && pass "MyDealer versionName 0.14.0" || fail "MyDealer versionName 0.14.0"
+    && pass "MyDealer versionName 0.15.0" || fail "MyDealer versionName 0.15.0"
 
   if grep -RIniE 'reconstruction|retrospective|synthetic|реконструк|ретроспектив|синтет' \
     "$CORE/LiveWorkflowModels.kt" \

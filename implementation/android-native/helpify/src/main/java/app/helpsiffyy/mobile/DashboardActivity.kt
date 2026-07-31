@@ -2,6 +2,7 @@ package app.helpsiffyy.mobile
 
 import android.content.Intent
 import app.shared.core.ApiUser
+import app.shared.core.BackgroundSyncScheduler
 import app.shared.core.BaseDashboardActivity
 import app.shared.core.DashboardCard
 import app.shared.core.DashboardMetric
@@ -29,6 +30,27 @@ class DashboardActivity : BaseDashboardActivity() {
 
     override fun dashboardCards(user: ApiUser): List<DashboardCard> =
         HelpifyScenarioCatalog.cards(user.role)
+
+    override fun configureBackgroundSync(
+        enabled: Boolean,
+        intervalMinutes: Int
+    ) {
+        BackgroundSyncScheduler.configure(
+            this,
+            "helpify-live-background-sync",
+            HelpifyBackgroundSyncWorker::class.java,
+            enabled,
+            intervalMinutes
+        )
+    }
+
+    override fun requestBackgroundSyncNow() {
+        BackgroundSyncScheduler.runNow(
+            this,
+            "helpify-live-background-sync",
+            HelpifyBackgroundSyncWorker::class.java
+        )
+    }
 
     override fun liveWorkflowRepository(): LiveWorkflowRepository =
         HelpifyLiveWorkflowRepository(productConfig.apiBaseUrl)

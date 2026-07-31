@@ -12,6 +12,8 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -27,6 +29,11 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     protected abstract fun dashboardCards(user: ApiUser): List<DashboardCard>
     protected open fun dashboardMetrics(user: ApiUser): List<DashboardMetric> = emptyList()
     protected open fun liveWorkflowRepository(): LiveWorkflowRepository? = null
+    protected open fun configureBackgroundSync(
+        enabled: Boolean,
+        intervalMinutes: Int
+    ) = Unit
+    protected open fun requestBackgroundSyncNow() = Unit
     protected abstract fun returnToAuth()
 
     private val executor = Executors.newSingleThreadExecutor()
@@ -38,6 +45,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private lateinit var libraryStore: DashboardLibraryStore
     private lateinit var liveUpdateStore: LiveUpdateStore
     private lateinit var liveUpdateNotifier: LiveUpdateNotifier
+    private lateinit var backgroundSyncStore: BackgroundSyncStore
     private lateinit var profileText: TextView
     private lateinit var cardsContainer: LinearLayout
     private var workflowRepository: LiveWorkflowRepository? = null
@@ -64,6 +72,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         libraryStore = DashboardLibraryStore(this, productConfig.productName)
         liveUpdateStore = LiveUpdateStore(this, productConfig.productName)
         liveUpdateNotifier = LiveUpdateNotifier(this, productConfig.productName)
+        backgroundSyncStore = BackgroundSyncStore(this, productConfig.productName)
         workflowRepository = liveWorkflowRepository()
 
         profileText = findViewById(R.id.profileText)
@@ -79,6 +88,12 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             finish()
             return
         }
+
+        val backgroundSettings = backgroundSyncStore.settings()
+        configureBackgroundSync(
+            backgroundSettings.enabled,
+            backgroundSettings.intervalMinutes
+        )
 
         restoreCachedLiveData(currentUser!!)
         render(currentUser!!)
@@ -382,6 +397,37 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             fullWidthParams()
         )
 
+        val backgroundSettings = backgroundSyncStore.settings()
+        val backgroundState = backgroundSyncStore.state()
+
+        cardsContainer.addView(
+            TextView(this).apply {
+                text = backgroundSyncSummary(backgroundSettings, backgroundState)
+                textSize = 14f
+                setTextColor(Color.DKGRAY)
+                setPadding(18, 6, 18, 10)
+            },
+            fullWidthParams()
+        )
+
+        cardsContainer.addView(
+            Button(this).apply {
+                text = "Синхронизировать в фоне сейчас"
+                isAllCaps = false
+                setOnClickListener {
+                    backgroundSyncStore.recordQueued()
+                    requestBackgroundSyncNow()
+                    Toast.makeText(
+                        this@BaseDashboardActivity,
+                        "Фоновая синхронизация поставлена в очередь",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    render(user)
+                }
+            },
+            fullWidthParams(bottom = 8)
+        )
+
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
         }
@@ -479,6 +525,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
 
     private fun openUpdateSettings(user: ApiUser) {
         val settings = liveUpdateStore.settings()
+        val backgroundSettings = backgroundSyncStore.settings()
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(32, 12, 32, 8)
@@ -496,10 +543,42 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             text = "Изменения статусов"
             isChecked = settings.notifyStatusChanges
         }
+        val backgroundEnabled = CheckBox(this).apply {
+            text = "Фоновое обновление через WorkManager"
+            isChecked = backgroundSettings.enabled
+        }
+        val intervalTitle = TextView(this).apply {
+            text = "Интервал фонового обновления"
+            textSize = 15f
+            setTextColor(Color.DKGRAY)
+            setPadding(0, 14, 0, 6)
+        }
+        val intervalGroup = RadioGroup(this).apply {
+            orientation = RadioGroup.VERTICAL
+        }
+
+        listOf(15, 30, 60, 180).forEach { minutes ->
+            intervalGroup.addView(
+                RadioButton(this).apply {
+                    id = minutes
+                    text = when (minutes) {
+                        15 -> "Каждые 15 минут"
+                        30 -> "Каждые 30 минут"
+                        60 -> "Каждый час"
+                        else -> "Каждые 3 часа"
+                    }
+                    isChecked = backgroundSettings.intervalMinutes == minutes
+                },
+                fullWidthParams()
+            )
+        }
 
         content.addView(enabled, fullWidthParams())
         content.addView(newItems, fullWidthParams())
         content.addView(statusChanges, fullWidthParams())
+        content.addView(backgroundEnabled, fullWidthParams())
+        content.addView(intervalTitle, fullWidthParams())
+        content.addView(intervalGroup, fullWidthParams())
 
         AlertDialog.Builder(this)
             .setTitle("Уведомления")
@@ -513,9 +592,24 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
                         notifyStatusChanges = statusChanges.isChecked
                     )
                 )
+
+                val selectedInterval = intervalGroup.checkedRadioButtonId
+                    .takeIf { it in listOf(15, 30, 60, 180) }
+                    ?: backgroundSettings.intervalMinutes
+
+                val updatedBackgroundSettings = BackgroundSyncSettings(
+                    enabled = backgroundEnabled.isChecked,
+                    intervalMinutes = selectedInterval
+                )
+                backgroundSyncStore.saveSettings(updatedBackgroundSettings)
+                configureBackgroundSync(
+                    updatedBackgroundSettings.enabled,
+                    updatedBackgroundSettings.intervalMinutes
+                )
+
                 Toast.makeText(
                     this,
-                    "Настройки уведомлений сохранены",
+                    "Настройки уведомлений и синхронизации сохранены",
                     Toast.LENGTH_SHORT
                 ).show()
                 render(user)
@@ -1262,6 +1356,34 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         startActivity(Intent.createChooser(intent, "Поделиться карточкой"))
     }
 
+    private fun backgroundSyncSummary(
+        settings: BackgroundSyncSettings,
+        state: BackgroundSyncState
+    ): String {
+        val schedule = if (settings.enabled) {
+            "включено · каждые ${settings.intervalMinutes} мин."
+        } else {
+            "выключено"
+        }
+
+        val lastRun = if (state.lastRunMillis > 0L) {
+            formatTimestamp(state.lastRunMillis)
+        } else {
+            "ещё не выполнялось"
+        }
+
+        return buildString {
+            append("Фоновое обновление: $schedule")
+            append("\nПоследний запуск: $lastRun")
+            if (state.lastMessage.isNotBlank()) {
+                append(" · ${state.lastMessage}")
+            }
+            if (state.lastChanges > 0) {
+                append(" · событий: ${state.lastChanges}")
+            }
+        }
+    }
+
     private fun formatTimestamp(timestampMillis: Long): String {
         if (timestampMillis <= 0L) return "неизвестное время"
         return SimpleDateFormat(
@@ -1287,6 +1409,10 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
 
     private fun logout() {
         val token = sessionStore.token()
+        configureBackgroundSync(
+            false,
+            backgroundSyncStore.settings().intervalMinutes
+        )
         sessionStore.clear()
         if (token != null) {
             executor.execute { authRepository.logout(token) }

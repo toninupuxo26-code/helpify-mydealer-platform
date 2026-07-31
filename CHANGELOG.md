@@ -1,3 +1,10 @@
+## 0.15.0 — Android background synchronization
+
+- Added opt-in periodic WorkManager synchronization.
+- Added network and battery execution constraints.
+- Added one-time background synchronization from the events section.
+- Added background cache, change detection and notification updates.
+
 ## 0.14.0 — Android server change notifications
 
 - Added detection of new server cards and workflow status changes.

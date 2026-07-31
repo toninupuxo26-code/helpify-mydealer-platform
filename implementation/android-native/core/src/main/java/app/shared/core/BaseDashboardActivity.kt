@@ -34,6 +34,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         intervalMinutes: Int
     ) = Unit
     protected open fun requestBackgroundSyncNow() = Unit
+    protected abstract fun dashboardActivityClass(): Class<out BaseDashboardActivity>
     protected abstract fun returnToAuth()
 
     private val executor = Executors.newSingleThreadExecutor()
@@ -71,7 +72,11 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         actionHistory = ActionHistoryStore(this, productConfig.productName)
         libraryStore = DashboardLibraryStore(this, productConfig.productName)
         liveUpdateStore = LiveUpdateStore(this, productConfig.productName)
-        liveUpdateNotifier = LiveUpdateNotifier(this, productConfig.productName)
+        liveUpdateNotifier = LiveUpdateNotifier(
+            this,
+            productConfig.productName,
+            dashboardActivityClass()
+        )
         backgroundSyncStore = BackgroundSyncStore(this, productConfig.productName)
         workflowRepository = liveWorkflowRepository()
 
@@ -95,14 +100,65 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             backgroundSettings.intervalMinutes
         )
 
+        DashboardShortcutManager.install(
+            this,
+            dashboardActivityClass(),
+            productConfig.productName
+        )
+        applyDashboardNavigation(intent, renderAfter = false)
+
         restoreCachedLiveData(currentUser!!)
         render(currentUser!!)
         refreshLiveData()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        applyDashboardNavigation(intent, renderAfter = true)
+    }
+
     override fun onDestroy() {
         executor.shutdownNow()
         super.onDestroy()
+    }
+
+    private fun applyDashboardNavigation(
+        intent: Intent?,
+        renderAfter: Boolean
+    ) {
+        val destination = DashboardNavigation.parse(intent) ?: return
+
+        destination.section?.let { section ->
+            activeSection = section
+        }
+        destination.query?.let { query ->
+            searchQuery = query.trim()
+        }
+        destination.favoritesOnly?.let { enabled ->
+            favoritesOnly = enabled
+        }
+        destination.unreadOnly?.let { enabled ->
+            unreadUpdatesOnly = enabled
+        }
+
+        val user = currentUser
+        if (renderAfter && user != null) {
+            render(user)
+        }
+
+        if (destination.synchronizeNow) {
+            requestBackgroundSyncNow()
+            Toast.makeText(
+                this,
+                "Фоновая синхронизация поставлена в очередь",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        if (destination.refreshNow && workflowRepository != null) {
+            refreshLiveData()
+        }
     }
 
     private fun render(user: ApiUser) {

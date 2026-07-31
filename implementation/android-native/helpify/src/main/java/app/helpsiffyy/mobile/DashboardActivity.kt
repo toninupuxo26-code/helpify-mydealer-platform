@@ -52,6 +52,9 @@ class DashboardActivity : BaseDashboardActivity() {
         )
     }
 
+    override fun dashboardActivityClass(): Class<out BaseDashboardActivity> =
+        DashboardActivity::class.java
+
     override fun liveWorkflowRepository(): LiveWorkflowRepository =
         HelpifyLiveWorkflowRepository(productConfig.apiBaseUrl)
 

@@ -1,3 +1,10 @@
+## 0.16.0 — Android deep links and quick navigation
+
+- Added notification navigation to unread server events.
+- Added dynamic launcher shortcuts for events, favourites, server data and sync.
+- Added Helpify and MyDealer custom deep links.
+- Added browsable HTTPS dashboard links and singleTop intent handling.
+
 ## 0.15.0 — Android background synchronization
 
 - Added opt-in periodic WorkManager synchronization.

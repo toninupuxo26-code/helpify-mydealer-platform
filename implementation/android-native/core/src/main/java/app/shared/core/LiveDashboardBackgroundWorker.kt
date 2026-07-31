@@ -10,6 +10,7 @@ abstract class LiveDashboardBackgroundWorker(
 ) : Worker(appContext, workerParameters) {
     protected abstract val productName: String
     protected abstract val apiBaseUrl: String
+    protected abstract val dashboardActivityClass: Class<*>
     protected abstract fun workflowRepository(): LiveWorkflowRepository
 
     override fun doWork(): Result {
@@ -42,8 +43,11 @@ abstract class LiveDashboardBackgroundWorker(
                 LiveDashboardCache(applicationContext, productName)
                     .save(user.role, payload)
 
-                LiveUpdateNotifier(applicationContext, productName)
-                    .notifyChanges(changes, updateStore.settings())
+                LiveUpdateNotifier(
+                    applicationContext,
+                    productName,
+                    dashboardActivityClass
+                ).notifyChanges(changes, updateStore.settings())
 
                 syncStore.recordResult(
                     successful = true,

@@ -43,21 +43,21 @@ grep -Fq 'Intent.ACTION_SEND' "$DASH" \
 grep -Fq 'RECENT_SECTION = "Недавние"' "$DASH" \
   && pass "recent section navigation" || fail "recent section navigation"
 
-grep -Fq 'versionCode 1500' \
+grep -Fq 'versionCode 1600' \
   "$ROOT/implementation/android-native/helpify/build.gradle" \
-  && pass "Helpify versionCode 1500" || fail "Helpify versionCode 1500"
+  && pass "Helpify versionCode 1600" || fail "Helpify versionCode 1600"
 
-grep -Fq "versionName '0.15.0'" \
+grep -Fq "versionName '0.16.0'" \
   "$ROOT/implementation/android-native/helpify/build.gradle" \
-  && pass "Helpify versionName 0.15.0" || fail "Helpify versionName 0.15.0"
+  && pass "Helpify versionName 0.16.0" || fail "Helpify versionName 0.16.0"
 
-grep -Fq 'versionCode 1500' \
+grep -Fq 'versionCode 1600' \
   "$ROOT/implementation/android-native/mydealer/build.gradle" \
-  && pass "MyDealer versionCode 1500" || fail "MyDealer versionCode 1500"
+  && pass "MyDealer versionCode 1600" || fail "MyDealer versionCode 1600"
 
-grep -Fq "versionName '0.15.0'" \
+grep -Fq "versionName '0.16.0'" \
   "$ROOT/implementation/android-native/mydealer/build.gradle" \
-  && pass "MyDealer versionName 0.15.0" || fail "MyDealer versionName 0.15.0"
+  && pass "MyDealer versionName 0.16.0" || fail "MyDealer versionName 0.16.0"
 
 if grep -RIniE 'reconstruction|retrospective|synthetic|реконструк|ретроспектив|синтет' \
   "$STORE" "$DASH" >/tmp/android-library-vocabulary.$$; then

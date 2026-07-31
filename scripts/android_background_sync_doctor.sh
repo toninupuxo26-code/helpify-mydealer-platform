@@ -54,7 +54,7 @@ grep -Fq 'LiveDashboardCache(applicationContext, productName)' \
   "$CORE_JAVA/LiveDashboardBackgroundWorker.kt" \
   && pass "background cache refresh" || fail "background cache refresh"
 
-grep -Fq 'LiveUpdateNotifier(applicationContext, productName)' \
+grep -Fq 'LiveUpdateNotifier(' \
   "$CORE_JAVA/LiveDashboardBackgroundWorker.kt" \
   && pass "background notification dispatch" \
   || fail "background notification dispatch"
@@ -84,21 +84,21 @@ grep -Fq 'Фоновое обновление через WorkManager' "$DASH" \
 grep -Fq 'requestBackgroundSyncNow()' "$DASH" \
   && pass "manual background sync action" || fail "manual background sync action"
 
-grep -Fq 'versionCode 1500' \
+grep -Fq 'versionCode 1600' \
   "$ROOT/implementation/android-native/helpify/build.gradle" \
-  && pass "Helpify versionCode 1500" || fail "Helpify versionCode 1500"
+  && pass "Helpify versionCode 1600" || fail "Helpify versionCode 1600"
 
-grep -Fq "versionName '0.15.0'" \
+grep -Fq "versionName '0.16.0'" \
   "$ROOT/implementation/android-native/helpify/build.gradle" \
-  && pass "Helpify versionName 0.15.0" || fail "Helpify versionName 0.15.0"
+  && pass "Helpify versionName 0.16.0" || fail "Helpify versionName 0.16.0"
 
-grep -Fq 'versionCode 1500' \
+grep -Fq 'versionCode 1600' \
   "$ROOT/implementation/android-native/mydealer/build.gradle" \
-  && pass "MyDealer versionCode 1500" || fail "MyDealer versionCode 1500"
+  && pass "MyDealer versionCode 1600" || fail "MyDealer versionCode 1600"
 
-grep -Fq "versionName '0.15.0'" \
+grep -Fq "versionName '0.16.0'" \
   "$ROOT/implementation/android-native/mydealer/build.gradle" \
-  && pass "MyDealer versionName 0.15.0" || fail "MyDealer versionName 0.15.0"
+  && pass "MyDealer versionName 0.16.0" || fail "MyDealer versionName 0.16.0"
 
 if grep -RIniE 'reconstruction|retrospective|synthetic|реконструк|ретроспектив|синтет' \
   "$CORE_JAVA/BackgroundSyncStore.kt" \

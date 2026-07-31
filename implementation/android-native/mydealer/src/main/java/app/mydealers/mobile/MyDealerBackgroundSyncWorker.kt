@@ -11,6 +11,7 @@ class MyDealerBackgroundSyncWorker(
 ) : LiveDashboardBackgroundWorker(appContext, workerParameters) {
     override val productName: String = "MyDealer"
     override val apiBaseUrl: String = "https://mydealers.app/api"
+    override val dashboardActivityClass: Class<*> = DashboardActivity::class.java
 
     override fun workflowRepository(): LiveWorkflowRepository =
         MyDealerLiveWorkflowRepository(apiBaseUrl)

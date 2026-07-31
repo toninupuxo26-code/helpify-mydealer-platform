@@ -11,6 +11,7 @@ class HelpifyBackgroundSyncWorker(
 ) : LiveDashboardBackgroundWorker(appContext, workerParameters) {
     override val productName: String = "Helpify"
     override val apiBaseUrl: String = "https://helpsiffyy.app/api"
+    override val dashboardActivityClass: Class<*> = DashboardActivity::class.java
 
     override fun workflowRepository(): LiveWorkflowRepository =
         HelpifyLiveWorkflowRepository(apiBaseUrl)

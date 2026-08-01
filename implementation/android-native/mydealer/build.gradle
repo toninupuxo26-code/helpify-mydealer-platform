@@ -10,8 +10,8 @@ android {
         applicationId 'app.mydealers.mobile'
         minSdkVersion 23
         targetSdkVersion 31
-        versionCode 1600
-        versionName '0.16.0'
+        versionCode 1700
+        versionName '0.17.0'
     }
 
     buildTypes {

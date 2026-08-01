@@ -81,17 +81,17 @@ grep -Fq 'android:scheme="mydealers"' "$MYDEALER/src/main/AndroidManifest.xml" \
 grep -Fq 'android:host="mydealers.app"' "$MYDEALER/src/main/AndroidManifest.xml" \
   && pass "MyDealer web deep link" || fail "MyDealer web deep link"
 
-grep -Fq 'versionCode 1600' "$HELPIFY/build.gradle" \
-  && pass "Helpify versionCode 1600" || fail "Helpify versionCode 1600"
+grep -Fq 'versionCode 1700' "$HELPIFY/build.gradle" \
+  && pass "Helpify versionCode 1700" || fail "Helpify versionCode 1700"
 
-grep -Fq "versionName '0.16.0'" "$HELPIFY/build.gradle" \
-  && pass "Helpify versionName 0.16.0" || fail "Helpify versionName 0.16.0"
+grep -Fq "versionName '0.17.0'" "$HELPIFY/build.gradle" \
+  && pass "Helpify versionName 0.17.0" || fail "Helpify versionName 0.17.0"
 
-grep -Fq 'versionCode 1600' "$MYDEALER/build.gradle" \
-  && pass "MyDealer versionCode 1600" || fail "MyDealer versionCode 1600"
+grep -Fq 'versionCode 1700' "$MYDEALER/build.gradle" \
+  && pass "MyDealer versionCode 1700" || fail "MyDealer versionCode 1700"
 
-grep -Fq "versionName '0.16.0'" "$MYDEALER/build.gradle" \
-  && pass "MyDealer versionName 0.16.0" || fail "MyDealer versionName 0.16.0"
+grep -Fq "versionName '0.17.0'" "$MYDEALER/build.gradle" \
+  && pass "MyDealer versionName 0.17.0" || fail "MyDealer versionName 0.17.0"
 
 if grep -RIniE 'reconstruction|retrospective|synthetic|реконструк|ретроспектив|синтет' \
   "$NAV" "$SHORTCUTS" "$NOTIFIER" "$DASH" >/tmp/android-navigation-vocabulary.$$; then

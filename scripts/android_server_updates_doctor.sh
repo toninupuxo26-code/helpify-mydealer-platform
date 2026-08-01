@@ -64,21 +64,21 @@ grep -Fq 'android.permission.POST_NOTIFICATIONS' \
   && pass "MyDealer notification permission" \
   || fail "MyDealer notification permission"
 
-grep -Fq 'versionCode 1600' \
+grep -Fq 'versionCode 1700' \
   "$ROOT/implementation/android-native/helpify/build.gradle" \
-  && pass "Helpify versionCode 1600" || fail "Helpify versionCode 1600"
+  && pass "Helpify versionCode 1700" || fail "Helpify versionCode 1700"
 
-grep -Fq "versionName '0.16.0'" \
+grep -Fq "versionName '0.17.0'" \
   "$ROOT/implementation/android-native/helpify/build.gradle" \
-  && pass "Helpify versionName 0.16.0" || fail "Helpify versionName 0.16.0"
+  && pass "Helpify versionName 0.17.0" || fail "Helpify versionName 0.17.0"
 
-grep -Fq 'versionCode 1600' \
+grep -Fq 'versionCode 1700' \
   "$ROOT/implementation/android-native/mydealer/build.gradle" \
-  && pass "MyDealer versionCode 1600" || fail "MyDealer versionCode 1600"
+  && pass "MyDealer versionCode 1700" || fail "MyDealer versionCode 1700"
 
-grep -Fq "versionName '0.16.0'" \
+grep -Fq "versionName '0.17.0'" \
   "$ROOT/implementation/android-native/mydealer/build.gradle" \
-  && pass "MyDealer versionName 0.16.0" || fail "MyDealer versionName 0.16.0"
+  && pass "MyDealer versionName 0.17.0" || fail "MyDealer versionName 0.17.0"
 
 if grep -RIniE 'reconstruction|retrospective|synthetic|реконструк|ретроспектив|синтет' \
   "$STORE" "$NOTIFIER" "$DASH" >/tmp/android-updates-vocabulary.$$; then

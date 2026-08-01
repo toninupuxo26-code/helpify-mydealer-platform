@@ -4,7 +4,9 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
+import android.text.Editable
 import android.text.InputType
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.Button
@@ -43,6 +45,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
     private lateinit var scenarioStore: ScenarioStore
     private lateinit var liveCache: LiveDashboardCache
     private lateinit var actionHistory: ActionHistoryStore
+    private lateinit var formDraftStore: LiveFormDraftStore
     private lateinit var libraryStore: DashboardLibraryStore
     private lateinit var liveUpdateStore: LiveUpdateStore
     private lateinit var liveUpdateNotifier: LiveUpdateNotifier
@@ -70,6 +73,7 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         scenarioStore = ScenarioStore(this, productConfig.productName)
         liveCache = LiveDashboardCache(this, productConfig.productName)
         actionHistory = ActionHistoryStore(this, productConfig.productName)
+        formDraftStore = LiveFormDraftStore(this, productConfig.productName)
         libraryStore = DashboardLibraryStore(this, productConfig.productName)
         liveUpdateStore = LiveUpdateStore(this, productConfig.productName)
         liveUpdateNotifier = LiveUpdateNotifier(
@@ -839,6 +843,12 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
                 append(card.title)
                 if (card.badge.isNotBlank()) append(" · ${card.badge}")
                 append("\n${card.description}")
+                if (
+                    card.form != null &&
+                    formDraftStore.hasDraft(role, card.id)
+                ) {
+                    append("\nЧерновик формы сохранён")
+                }
                 if (showingCachedData) append("\nСохранённая копия · действия отключены")
             }
             isAllCaps = false
@@ -914,11 +924,24 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
 
     private fun openLiveActionForm(card: LiveDashboardCard) {
         val form = card.form ?: return
+        val role = currentUser?.role.orEmpty()
+        val draft = formDraftStore.loadDraft(role, card.id)
         val entries = linkedMapOf<String, EditText>()
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(32, 12, 32, 8)
         }
+        val draftStatus = TextView(this).apply {
+            text = if (draft != null) {
+                "Восстановлен черновик от ${formatTimestamp(draft.updatedAtMillis)}"
+            } else {
+                "Изменения формы сохраняются автоматически"
+            }
+            textSize = 14f
+            setTextColor(Color.DKGRAY)
+            setPadding(0, 4, 0, 8)
+        }
+        content.addView(draftStatus, fullWidthParams())
 
         form.fields.forEach { field ->
             content.addView(
@@ -931,9 +954,11 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
                 fullWidthParams()
             )
 
+            val initialValue = draft?.values?.get(field.key)
+                ?: field.defaultValue
             val entry = EditText(this).apply {
                 hint = field.hint
-                setText(field.defaultValue)
+                setText(initialValue)
                 inputType = inputTypeFor(field.type)
                 if (field.type == LiveFormFieldType.MULTILINE) {
                     minLines = 3
@@ -944,6 +969,13 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
             entries[field.key] = entry
             content.addView(entry, fullWidthParams())
         }
+
+        attachDraftAutosave(
+            role = role,
+            card = card,
+            entries = entries,
+            status = draftStatus
+        )
 
         val scroll = ScrollView(this).apply {
             addView(
@@ -958,18 +990,29 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         val dialog = AlertDialog.Builder(this)
             .setTitle(form.title)
             .setView(scroll)
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton("Закрыть", null)
+            .setNeutralButton("Шаблоны", null)
             .setPositiveButton(form.submitLabel, null)
             .create()
 
         dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                openFormTemplateMenu(
+                    card = card,
+                    form = form,
+                    entries = entries,
+                    status = draftStatus
+                )
+            }
+
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val values = entries.mapValues { it.value.text.toString().trim() }
+                val values = collectFormValues(entries)
                 val error = validateLiveForm(form, values)
 
                 if (error != null) {
                     Toast.makeText(this, error, Toast.LENGTH_LONG).show()
                 } else {
+                    formDraftStore.saveDraft(role, card.id, values)
                     dialog.dismiss()
                     performLiveAction(card, values)
                 }
@@ -977,6 +1020,193 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         }
 
         dialog.show()
+    }
+
+    private fun attachDraftAutosave(
+        role: String,
+        card: LiveDashboardCard,
+        entries: Map<String, EditText>,
+        status: TextView
+    ) {
+        entries.values.forEach { entry ->
+            entry.addTextChangedListener(
+                object : TextWatcher {
+                    override fun beforeTextChanged(
+                        value: CharSequence?,
+                        start: Int,
+                        count: Int,
+                        after: Int
+                    ) = Unit
+
+                    override fun onTextChanged(
+                        value: CharSequence?,
+                        start: Int,
+                        before: Int,
+                        count: Int
+                    ) = Unit
+
+                    override fun afterTextChanged(value: Editable?) {
+                        formDraftStore.saveDraft(
+                            role,
+                            card.id,
+                            collectFormValues(entries)
+                        )
+                        status.text = "Черновик сохранён автоматически"
+                    }
+                }
+            )
+        }
+    }
+
+    private fun collectFormValues(
+        entries: Map<String, EditText>
+    ): Map<String, String> =
+        entries.mapValues { it.value.text.toString().trim() }
+
+    private fun applyFormValues(
+        form: LiveActionForm,
+        entries: Map<String, EditText>,
+        values: Map<String, String>
+    ) {
+        form.fields.forEach { field ->
+            val value = values[field.key] ?: field.defaultValue
+            entries[field.key]?.apply {
+                setText(value)
+                setSelection(text.length)
+            }
+        }
+    }
+
+    private fun openFormTemplateMenu(
+        card: LiveDashboardCard,
+        form: LiveActionForm,
+        entries: Map<String, EditText>,
+        status: TextView
+    ) {
+        val role = currentUser?.role.orEmpty()
+        val templates = formDraftStore.templates(role, card.id)
+        val options = mutableListOf(
+            "Сохранить текущие значения как шаблон",
+            "Вернуть значения формы по умолчанию",
+            "Очистить черновик"
+        )
+        options += templates.map { "Применить: ${it.name}" }
+        if (templates.isNotEmpty()) {
+            options += "Удалить шаблон…"
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Черновики и шаблоны")
+            .setItems(options.toTypedArray()) { _, position ->
+                when {
+                    position == 0 -> promptTemplateName(
+                        card,
+                        entries,
+                        status
+                    )
+
+                    position == 1 -> {
+                        applyFormValues(form, entries, emptyMap())
+                        formDraftStore.saveDraft(
+                            role,
+                            card.id,
+                            collectFormValues(entries)
+                        )
+                        status.text = "Восстановлены значения по умолчанию"
+                    }
+
+                    position == 2 -> {
+                        formDraftStore.clearDraft(role, card.id)
+                        applyFormValues(form, entries, emptyMap())
+                        status.text = "Черновик очищен"
+                    }
+
+                    position in 3 until 3 + templates.size -> {
+                        val template = templates[position - 3]
+                        applyFormValues(form, entries, template.values)
+                        formDraftStore.saveDraft(
+                            role,
+                            card.id,
+                            collectFormValues(entries)
+                        )
+                        status.text = "Применён шаблон «${template.name}»"
+                    }
+
+                    else -> openTemplateDeleteDialog(
+                        card,
+                        status
+                    )
+                }
+            }
+            .setNegativeButton("Закрыть", null)
+            .show()
+    }
+
+    private fun promptTemplateName(
+        card: LiveDashboardCard,
+        entries: Map<String, EditText>,
+        status: TextView
+    ) {
+        val role = currentUser?.role.orEmpty()
+        val suggestedNumber =
+            formDraftStore.templates(role, card.id).size + 1
+        val nameInput = EditText(this).apply {
+            hint = "Название шаблона"
+            setText("Шаблон $suggestedNumber")
+            setSelection(text.length)
+            inputType =
+                InputType.TYPE_CLASS_TEXT or
+                    InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Сохранить шаблон")
+            .setView(nameInput)
+            .setNegativeButton("Отмена", null)
+            .setPositiveButton("Сохранить") { _, _ ->
+                val name = nameInput.text.toString().trim()
+                if (name.isBlank()) {
+                    Toast.makeText(
+                        this,
+                        "Введите название шаблона",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    val template = formDraftStore.saveTemplate(
+                        role,
+                        card.id,
+                        name,
+                        collectFormValues(entries)
+                    )
+                    status.text = "Сохранён шаблон «${template.name}»"
+                }
+            }
+            .show()
+    }
+
+    private fun openTemplateDeleteDialog(
+        card: LiveDashboardCard,
+        status: TextView
+    ) {
+        val role = currentUser?.role.orEmpty()
+        val templates = formDraftStore.templates(role, card.id)
+        if (templates.isEmpty()) return
+
+        AlertDialog.Builder(this)
+            .setTitle("Удалить шаблон")
+            .setItems(
+                templates.map { it.name }.toTypedArray()
+            ) { _, position ->
+                val template = templates[position]
+                formDraftStore.deleteTemplate(
+                    role,
+                    card.id,
+                    template.id
+                )
+                status.text = "Удалён шаблон «${template.name}»"
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 
     private fun inputTypeFor(type: LiveFormFieldType): Int = when (type) {
@@ -1048,6 +1278,10 @@ abstract class BaseDashboardActivity : AppCompatActivity() {
         executor.execute {
             val result = repository.perform(token, user, card, values)
             actionHistory.add(card.title, result)
+
+            if (result.successful && card.form != null) {
+                formDraftStore.clearDraft(user.role, card.id)
+            }
 
             runOnUiThread {
                 liveLoading = false

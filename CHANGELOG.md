@@ -1,3 +1,10 @@
+## 0.17.0 — Android form drafts and templates
+
+- Added automatic persistence and restoration of live-action form drafts.
+- Added named reusable templates per action and user role.
+- Added template application, replacement and deletion.
+- Added successful-action draft cleanup while preserving failed submissions.
+
 ## 0.16.0 — Android deep links and quick navigation
 
 - Added notification navigation to unread server events.
